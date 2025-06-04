@@ -79,3 +79,35 @@ if submit_button:
     except Exception as e:
         st.error(f"Ocorreu um erro ao registrar a entrada: {e}")
 
+
+
+
+
+
+st.subheader("Consultar entradas por cliente e data")
+
+# Selecionar cliente e data
+cliente_consulta = st.selectbox("Selecione o cliente", clientes_lista, key="consulta_cliente")
+data_consulta = st.date_input("Selecione a data da entrada")
+
+if st.button("Consultar entradas"):
+    try:
+        data_iso = datetime.combine(data_consulta, datetime.min.time()).isoformat()
+
+        consulta = supabase.table("entradas")\
+            .select("*")\
+            .eq("tipo_cliente", cliente_consulta)\
+            .gte("data_entrada", data_iso)\
+            .lt("data_entrada", datetime.combine(data_consulta, datetime.max.time()).isoformat())\
+            .order("data_entrada", desc=True)\
+            .execute()
+
+        if consulta.data:
+            st.write(f"🔎 Entradas para **{cliente_consulta}** em **{data_consulta.strftime('%d/%m/%Y')}**:")
+            st.dataframe(consulta.data)
+        else:
+            st.info("Nenhuma entrada encontrada para esse cliente nessa data.")
+
+    except Exception as e:
+        st.error(f"Erro na consulta: {e}")
+
