@@ -1,4 +1,4 @@
-git add streamlit_app.py
-git commit -m "Atualiza app com mensagem de teste"
-git push origin main
+import streamlit as st
 
+st.title("Olá, Streamlit está funcionando!")
+st.write("Esse é um app básico para testar se tudo está certo.")
