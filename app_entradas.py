@@ -13,14 +13,7 @@ supabase = init_connection()
 
 st.title("Caixa SCS")
 
-# Último id_entrada para gerar o próximo automaticamente
-dados = supabase.table("entradas").select("id_entrada").order("id_entrada", desc=True).limit(1).execute()
-ultimo_id = dados.data[0]["id_entrada"] if dados.data else 20845  # caso não tenha nenhum, começa do 20845
-
-id_entrada = ultimo_id + 1
-data_entrada = date.today()
-
-# Lista de clientes
+# Lista de clientes para dropdown
 clientes = [
     "Alex De Brito Bonifacio",
     "Alex Junio De Sousa Silva",
@@ -68,40 +61,50 @@ clientes = [
 # Lista de formas de pagamento
 formas_pagamento = ['dinheiro', 'cartão', 'Apurado', 'pix']
 
-# Exibe o formulário
-st.write(f"**ID da Entrada:** {id_entrada}")
-st.write(f"**Data da Entrada:** {data_entrada}")
+# Obter o último id_entrada para gerar próximo
+def get_last_id():
+    response = supabase.table("entradas").select("id_entrada").order("id_entrada", desc=True).limit(1).execute()
+    if response.error or not response.data:
+        return 20845  # valor padrão se falhar na consulta
+    return response.data[0]["id_entrada"]
 
-tipo_cliente = st.selectbox("Tipo de Cliente", clientes)
-forma_pagamento = st.selectbox("Forma de Pagamento", formas_pagamento)
-valor_entrada = st.number_input("Valor da Entrada", min_value=0.0, format="%.2f")
-qtd_entradas = st.number_input("Quantidade de Entradas", min_value=1, step=1)
+ultimo_id = get_last_id()
+novo_id = ultimo_id + 1
 
-if st.button("Registrar Entrada"):
-    # Busca cod_mensalista do cliente selecionado
-    cliente_info = supabase.table("clientes").select("cod_mensalista").eq("nome_cliente", tipo_cliente).execute()
+# Seleção de cliente no dropdown
+cliente_selecionado = st.selectbox("Tipo de cliente", clientes)
 
-    if cliente_info.data and len(cliente_info.data) > 0:
-        cod_cliente = cliente_info.data[0]["cod_mensalista"]
-    else:
-        st.error("Cliente não encontrado na tabela clientes.")
-        st.stop()
+# Obter cod_mensalista do cliente selecionado
+def get_cod_cliente(nome_cliente):
+    response = supabase.table("clientes").select("cod_mensalista").eq("nome_cliente", nome_cliente).execute()
+    if response.error or not response.data:
+        return None
+    return response.data[0]["cod_mensalista"]
 
+cod_cliente = get_cod_cliente(cliente_selecionado)
+
+forma_pagamento_selecionada = st.selectbox("Forma de pagamento", formas_pagamento)
+
+valor_entrada = st.number_input("Valor da entrada", min_value=0.0, format="%.2f")
+
+qtd_entradas = st.number_input("Quantidade de entradas", min_value=1, step=1)
+
+if st.button("Registrar entrada"):
     nova_entrada = {
-        "id_entrada": id_entrada,
-        "data_entrada": str(data_entrada),  # formato date como string ISO
+        "id_entrada": novo_id,
+        "data_entrada": str(date.today()),
+        "tipo_cliente": cliente_selecionado,
         "cod_cliente": cod_cliente,
-        "tipo_cliente": tipo_cliente,
-        "forma_pagamento": forma_pagamento,
+        "forma_pagamento": forma_pagamento_selecionada,
         "valor_entrada": valor_entrada,
-        "qtd_entradas": int(qtd_entradas)
+        "qtd_entradas": qtd_entradas,
     }
-
     try:
         resultado = supabase.table("entradas").insert(nova_entrada).execute()
-        if resultado.status_code == 201:
+        if resultado.error is None:
             st.success("Entrada registrada com sucesso!")
         else:
-            st.error(f"Erro ao registrar a entrada: {resultado.data}")
+            st.error(f"Erro ao registrar a entrada: {resultado.error.message}")
     except Exception as e:
         st.error(f"Ocorreu um erro ao registrar a entrada: {e}")
+
