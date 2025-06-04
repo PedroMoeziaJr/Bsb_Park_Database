@@ -63,3 +63,47 @@ with st.form("form_despesa"):
             st.success("Despesa registrada com sucesso!")
         except Exception as e:
             st.error(f"Erro ao registrar despesa: {e}")
+
+
+
+st.markdown("---")
+st.header("Visualização de Despesas")
+
+# Buscar todos os dados da tabela
+try:
+    resposta = supabase.table("despesas").select("*").execute()
+    df = resposta.data
+
+    if df:
+        import pandas as pd
+
+        # Converter para DataFrame
+        df = pd.DataFrame(df)
+        df["data"] = pd.to_datetime(df["data"])
+
+        # Filtros
+        anos = sorted(df["data"].dt.year.unique(), reverse=True)
+        meses = sorted(df["data"].dt.month.unique())
+
+        col1, col2 = st.columns(2)
+        with col1:
+            ano_selecionado = st.selectbox("Ano", anos)
+        with col2:
+            mes_selecionado = st.selectbox("Mês", meses)
+
+        # Aplicar filtros
+        df_filtrado = df[
+            (df["data"].dt.year == ano_selecionado) &
+            (df["data"].dt.month == mes_selecionado)
+        ]
+
+        st.dataframe(
+            df_filtrado.sort_values(by="data", ascending=False).reset_index(drop=True),
+            use_container_width=True
+        )
+
+    else:
+        st.info("Nenhuma despesa registrada ainda.")
+except Exception as e:
+    st.error(f"Erro ao buscar dados: {e}")
+
