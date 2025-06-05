@@ -15,11 +15,11 @@ st.title("Caixa Taguatinga")
 
 # Lista de clientes
 clientes_lista = [
-   
-
-
-    "Farmacotecnica Instituto De Manipulacoes","Cliente Rotativo Taguatinga","Joao Siqueira Kaya","Banco Bradesco Sa - Agencia Taguatinga","Bradesco S.A - Prime Taguatinga,Agencia 3309-0 Ag Empresas Brasilia Ii"
-  
+    "Farmacotecnica Instituto De Manipulacoes",
+    "Cliente Rotativo Taguatinga",
+    "Joao Siqueira Kaya",
+    "Banco Bradesco Sa - Agencia Taguatinga",
+    "Bradesco S.A - Prime Taguatinga,Agencia 3309-0 Ag Empresas Brasilia Ii"
 ]
 
 # --- FORMULÁRIO DE ENTRADA ---
@@ -35,7 +35,7 @@ with st.form("form_entrada"):
 def get_last_id():
     response = supabase.table("entradas").select("id_entrada").order("id_entrada", desc=True).limit(1).execute()
     if not response or not response.data:
-        return 20845
+        return 20845  # valor inicial
     return response.data[0]["id_entrada"]
 
 # Registro no banco
