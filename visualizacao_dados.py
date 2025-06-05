@@ -1,9 +1,8 @@
 import streamlit as st
 from supabase import create_client, Client
-from datetime import datetime
-import pandas as pd
+from datetime import datetime, timedelta
 
-# Conexão com Supabase
+# Conexão com o Supabase
 @st.cache_resource
 def init_connection():
     url = st.secrets["SUPABASE_URL"]
@@ -12,86 +11,91 @@ def init_connection():
 
 supabase: Client = init_connection()
 
+# Título
 st.title("📊 Visualização de Dados - BSB Park")
 
-# Menu lateral com botões
-tabela_opcao = st.sidebar.radio("Escolha a Tabela:", ["Clientes Cadastrados", "Caixas", "Despesas", "Estacionamentos"])
+# Barra lateral de navegação
+st.sidebar.title("📁 Selecione uma Tabela")
+opcao = st.sidebar.radio("Escolha uma opção:", ["Clientes Cadastrados", "Caixas", "Despesas", "Estacionamentos"])
 
-# --- CLIENTES ---
-if tabela_opcao == "Clientes Cadastrados":
-    st.header("📁 Clientes Cadastrados")
+# ----------------- CLIENTES -------------------
+if opcao == "Clientes Cadastrados":
+    st.subheader("👥 Clientes Cadastrados")
 
-    # Obter filiais para filtro
-    filiais_data = supabase.table("filiais").select("id, nome").execute()
-    filiais_dict = {f["nome"]: f["id"] for f in filiais_data.data}
-    filial_selecionada = st.sidebar.selectbox("Filtrar por Estacionamento", list(filiais_dict.keys()))
+    # Filtro por filial
+    filiais_data = supabase.table("filiais").select("id_filial, f_nome").execute()
+    filiais_dict = {f["f_nome"]: f["id_filial"] for f in filiais_data.data}
+    filial_selecionada_nome = st.selectbox("Filtrar por Estacionamento", list(filiais_dict.keys()))
+    filial_id = filiais_dict[filial_selecionada_nome]
 
-    id_filial = filiais_dict[filial_selecionada]
+    clientes = supabase.table("clientes").select("*").eq("id_filial", filial_id).execute()
 
-    resposta = supabase.table("clientes").select("*").eq("id_filial", id_filial).execute()
-    if resposta.data:
-        df = pd.DataFrame(resposta.data)
-        st.dataframe(df)
+    if clientes.data:
+        st.dataframe(clientes.data)
     else:
-        st.info("Nenhum cliente encontrado para essa filial.")
+        st.info("Nenhum cliente encontrado para esta filial.")
 
-# --- ENTRADAS ---
-elif tabela_opcao == "Caixas":
-    st.header("💰 Caixas")
+# ----------------- CAIXAS -------------------
+elif opcao == "Caixas":
+    st.subheader("💰 Entradas (Caixa)")
 
-    data_filtro = st.sidebar.date_input("Filtrar por Data", value=datetime.now().date())
+    data_consulta = st.date_input("Selecione a data", value=datetime.now().date())
+    inicio_dia = datetime.combine(data_consulta, datetime.min.time()).isoformat()
+    fim_dia = datetime.combine(data_consulta, datetime.max.time()).isoformat()
 
-    inicio = datetime.combine(data_filtro, datetime.min.time()).isoformat()
-    fim = datetime.combine(data_filtro, datetime.max.time()).isoformat()
-
-    resposta = supabase.table("entradas") \
-        .select("*") \
-        .gte("data_entrada", inicio) \
-        .lte("data_entrada", fim) \
+    entradas = supabase.table("entradas") \
+        .select("tipo_cliente, valor_entrada, forma_pagamento, qtd_entradas, data_entrada") \
+        .gte("data_entrada", inicio_dia) \
+        .lte("data_entrada", fim_dia) \
         .order("data_entrada", desc=True) \
         .execute()
 
-    if resposta.data:
-        df = pd.DataFrame(resposta.data)
-        df["data_entrada"] = pd.to_datetime(df["data_entrada"])
-        df["hora"] = df["data_entrada"].dt.strftime("%H:%M:%S")
-        st.dataframe(df)
-        st.success(f"Total de entradas: {len(df)}")
+    if entradas.data:
+        st.dataframe(entradas.data)
+        total = sum(item["valor_entrada"] for item in entradas.data)
+        st.success(f"💵 Total do dia: R$ {total:.2f}")
     else:
-        st.info("Nenhuma entrada encontrada nesta data.")
+        st.info("Nenhuma entrada encontrada para esta data.")
 
-# --- DESPESAS ---
-elif tabela_opcao == "Despesas":
-    st.header("📉 Despesas")
+# ----------------- DESPESAS -------------------
+elif opcao == "Despesas":
+    st.subheader("📉 Despesas")
 
-    # Filtro por mês/ano
-    hoje = datetime.today()
-    ano = st.sidebar.selectbox("Ano", list(range(2023, hoje.year + 1)), index=(hoje.year - 2023))
-    mes = st.sidebar.selectbox("Mês", list(range(1, 13)), index=(hoje.month - 1))
+    meses = {
+        "Janeiro": 1, "Fevereiro": 2, "Março": 3, "Abril": 4,
+        "Maio": 5, "Junho": 6, "Julho": 7, "Agosto": 8,
+        "Setembro": 9, "Outubro": 10, "Novembro": 11, "Dezembro": 12
+    }
 
-    resposta = supabase.table("despesas") \
+    mes_nome = st.selectbox("Selecione o mês", list(meses.keys()))
+    mes = meses[mes_nome]
+    ano = datetime.now().year
+
+    inicio_mes = datetime(ano, mes, 1).isoformat()
+    fim_mes = (datetime(ano, mes, 28) + timedelta(days=4)).replace(day=1) - timedelta(seconds=1)
+    fim_mes = fim_mes.isoformat()
+
+    despesas = supabase.table("despesas") \
         .select("*") \
-        .eq("ano", ano) \
-        .eq("mes", mes) \
-        .order("dia", desc=True) \
+        .gte("data_despesa", inicio_mes) \
+        .lte("data_despesa", fim_mes) \
+        .order("data_despesa", desc=True) \
         .execute()
 
-    if resposta.data:
-        df = pd.DataFrame(resposta.data)
-        st.dataframe(df)
-        total = df["valor"].astype(float).sum()
-        st.success(f"Total de despesas em {mes:02d}/{ano}: R$ {total:.2f}")
+    if despesas.data:
+        st.dataframe(despesas.data)
+        total_despesas = sum(item["valor_despesa"] for item in despesas.data)
+        st.error(f"📉 Total de despesas no mês: R$ {total_despesas:.2f}")
     else:
-        st.info("Nenhuma despesa registrada para este período.")
+        st.info("Nenhuma despesa encontrada para este mês.")
 
-# --- FILIAIS ---
-elif tabela_opcao == "Estacionamentos":
-    st.header("🏢 Estacionamentos")
+# ----------------- FILIAIS -------------------
+elif opcao == "Estacionamentos":
+    st.subheader("🏢 Estacionamentos (Filiais)")
+    filiais = supabase.table("filiais").select("*").execute()
 
-    resposta = supabase.table("filiais").select("*").execute()
-    if resposta.data:
-        df = pd.DataFrame(resposta.data)
-        st.dataframe(df)
+    if filiais.data:
+        st.dataframe(filiais.data)
     else:
         st.info("Nenhuma filial encontrada.")
 
