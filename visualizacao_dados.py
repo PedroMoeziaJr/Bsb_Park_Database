@@ -3,7 +3,7 @@ from supabase import create_client, Client
 from datetime import datetime
 import pandas as pd
 
-# Conexão com o Supabase
+# Conexão com Supabase
 @st.cache_resource
 def init_connection():
     url = st.secrets["SUPABASE_URL"]
@@ -12,51 +12,86 @@ def init_connection():
 
 supabase: Client = init_connection()
 
-st.title("📊 Visualização de Entradas")
+st.title("📊 Visualização de Dados - BSB Park")
 
-# --- Filtros ---
-st.sidebar.header("Filtros")
-data_consulta = st.sidebar.date_input("Data", value=datetime.now().date())
+# Menu lateral com botões
+tabela_opcao = st.sidebar.radio("Escolha a Tabela:", ["Clientes Cadastrados", "Caixas", "Despesas", "Estacionamentos"])
 
-# Consulta todos os clientes disponíveis
-clientes_data = supabase.table("entradas").select("tipo_cliente").execute()
-clientes_unicos = sorted(set(e["tipo_cliente"] for e in clientes_data.data))
-cliente_filtro = st.sidebar.selectbox("Cliente (opcional)", ["Todos"] + clientes_unicos)
+# --- CLIENTES ---
+if tabela_opcao == "Clientes Cadastrados":
+    st.header("📁 Clientes Cadastrados")
 
-# Consulta ao banco com base na data
-inicio_dia = datetime.combine(data_consulta, datetime.min.time()).isoformat()
-fim_dia = datetime.combine(data_consulta, datetime.max.time()).isoformat()
+    # Obter filiais para filtro
+    filiais_data = supabase.table("filiais").select("id, nome").execute()
+    filiais_dict = {f["nome"]: f["id"] for f in filiais_data.data}
+    filial_selecionada = st.sidebar.selectbox("Filtrar por Estacionamento", list(filiais_dict.keys()))
 
-query = supabase.table("entradas") \
-    .select("tipo_cliente, valor_entrada, forma_pagamento, qtd_entradas, data_entrada") \
-    .gte("data_entrada", inicio_dia) \
-    .lte("data_entrada", fim_dia)
+    id_filial = filiais_dict[filial_selecionada]
 
-if cliente_filtro != "Todos":
-    query = query.eq("tipo_cliente", cliente_filtro)
+    resposta = supabase.table("clientes").select("*").eq("id_filial", id_filial).execute()
+    if resposta.data:
+        df = pd.DataFrame(resposta.data)
+        st.dataframe(df)
+    else:
+        st.info("Nenhum cliente encontrado para essa filial.")
 
-resposta = query.order("data_entrada", desc=True).execute()
+# --- ENTRADAS ---
+elif tabela_opcao == "Caixas":
+    st.header("💰 Caixas")
 
-# --- Exibição dos dados ---
-if resposta.data:
-    df = pd.DataFrame(resposta.data)
-    df["data_entrada"] = pd.to_datetime(df["data_entrada"])
-    df["hora"] = df["data_entrada"].dt.strftime("%H:%M:%S")
-    df["valor_entrada"] = df["valor_entrada"].astype(float)
+    data_filtro = st.sidebar.date_input("Filtrar por Data", value=datetime.now().date())
 
-    st.markdown(f"### Entradas em {data_consulta.strftime('%d/%m/%Y')}")
-    st.dataframe(df[["tipo_cliente", "valor_entrada", "forma_pagamento", "qtd_entradas", "hora"]])
+    inicio = datetime.combine(data_filtro, datetime.min.time()).isoformat()
+    fim = datetime.combine(data_filtro, datetime.max.time()).isoformat()
 
-    total = df["valor_entrada"].sum()
-    st.success(f"💰 Total do dia: R$ {total:.2f}")
+    resposta = supabase.table("entradas") \
+        .select("*") \
+        .gte("data_entrada", inicio) \
+        .lte("data_entrada", fim) \
+        .order("data_entrada", desc=True) \
+        .execute()
 
-    # Exportação
-    csv = df.to_csv(index=False).encode('utf-8')
-    st.download_button(
-        label="📥 Baixar como CSV",
-        data=csv,
-        file_name=f"entradas_{data_consulta}.csv",
-        mime='text/csv'
-    )
-else:
-    st.warning("Nenhuma entrada encontrada para os filtros selecionados.")
+    if resposta.data:
+        df = pd.DataFrame(resposta.data)
+        df["data_entrada"] = pd.to_datetime(df["data_entrada"])
+        df["hora"] = df["data_entrada"].dt.strftime("%H:%M:%S")
+        st.dataframe(df)
+        st.success(f"Total de entradas: {len(df)}")
+    else:
+        st.info("Nenhuma entrada encontrada nesta data.")
+
+# --- DESPESAS ---
+elif tabela_opcao == "Despesas":
+    st.header("📉 Despesas")
+
+    # Filtro por mês/ano
+    hoje = datetime.today()
+    ano = st.sidebar.selectbox("Ano", list(range(2023, hoje.year + 1)), index=(hoje.year - 2023))
+    mes = st.sidebar.selectbox("Mês", list(range(1, 13)), index=(hoje.month - 1))
+
+    resposta = supabase.table("despesas") \
+        .select("*") \
+        .eq("ano", ano) \
+        .eq("mes", mes) \
+        .order("dia", desc=True) \
+        .execute()
+
+    if resposta.data:
+        df = pd.DataFrame(resposta.data)
+        st.dataframe(df)
+        total = df["valor"].astype(float).sum()
+        st.success(f"Total de despesas em {mes:02d}/{ano}: R$ {total:.2f}")
+    else:
+        st.info("Nenhuma despesa registrada para este período.")
+
+# --- FILIAIS ---
+elif tabela_opcao == "Estacionamentos":
+    st.header("🏢 Estacionamentos")
+
+    resposta = supabase.table("filiais").select("*").execute()
+    if resposta.data:
+        df = pd.DataFrame(resposta.data)
+        st.dataframe(df)
+    else:
+        st.info("Nenhuma filial encontrada.")
+
