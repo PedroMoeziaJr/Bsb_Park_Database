@@ -1,6 +1,7 @@
 import streamlit as st
 from supabase import create_client, Client
-from datetime import datetime
+from datetime import datetime, date
+import pandas as pd
 
 # Inicializa conexão com Supabase
 @st.cache_resource
@@ -79,35 +80,33 @@ if submit_button:
     except Exception as e:
         st.error(f"Ocorreu um erro ao registrar a entrada: {e}")
 
+# -------------------------
+# Consulta por dia
+# -------------------------
+st.subheader("🔍 Consultar Entradas por Dia")
+data_consulta = st.date_input("Selecione a data para consulta", value=date.today())
 
+# Busca entradas da data selecionada
+consulta = supabase.table("entradas").select("*").eq("data_entrada", str(data_consulta)).execute()
 
+if hasattr(consulta, "data") and consulta.data:
+    df = pd.DataFrame(consulta.data)
 
+    # Conversão do valor
+    df["valor_entrada"] = pd.to_numeric(df["valor_entrada"], errors="coerce")
 
+    # Lista de clientes únicos
+    clientes = df["tipo_cliente"].unique()
+    st.write("👥 Clientes com entrada neste dia:")
+    st.write(", ".join(sorted(clientes)))
 
-st.subheader("Consultar entradas por cliente e data")
+    # Tabela completa
+    st.write("📋 Entradas registradas:")
+    st.dataframe(df)
 
-# Selecionar cliente e data
-cliente_consulta = st.selectbox("Selecione o cliente", clientes_lista, key="consulta_cliente")
-data_consulta = st.date_input("Selecione a data da entrada")
+    # Soma total
+    total = df["valor_entrada"].sum()
+    st.success(f"💰 Total de entradas do dia: R$ {total:,.2f}")
 
-if st.button("Consultar entradas"):
-    try:
-        data_iso = datetime.combine(data_consulta, datetime.min.time()).isoformat()
-
-        consulta = supabase.table("entradas")\
-            .select("*")\
-            .eq("tipo_cliente", cliente_consulta)\
-            .gte("data_entrada", data_iso)\
-            .lt("data_entrada", datetime.combine(data_consulta, datetime.max.time()).isoformat())\
-            .order("data_entrada", desc=True)\
-            .execute()
-
-        if consulta.data:
-            st.write(f"🔎 Entradas para **{cliente_consulta}** em **{data_consulta.strftime('%d/%m/%Y')}**:")
-            st.dataframe(consulta.data)
-        else:
-            st.info("Nenhuma entrada encontrada para esse cliente nessa data.")
-
-    except Exception as e:
-        st.error(f"Erro na consulta: {e}")
-
+else:
+    st.info("Nenhuma entrada registrada nessa data.")
