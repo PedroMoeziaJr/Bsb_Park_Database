@@ -15,20 +15,15 @@ st.title("Caixa SCS")
 
 # Lista de clientes
 clientes_lista = [
-    "Alex De Brito Bonifacio", "Alex Junio De Sousa Silva", "Atlantico Engenharia Ltda",
-    "Bruna Ayres Cardoso", "Gabriel Ferreira Rego", "Guilherme Costa Macedo",
-    "Joao Costa E Silva", "Jorge Luiz De Souza", "Jose Pereira De Araujo", "Rodrigo Merlo Nunes",
-    "Leandro Ribeiro De Lima", "Milena Da Silva Santos Borges", "Tania Mara Meneses De Faria",
-    "Vasco Azevedo", "Sergio Henrique Moreira Cunha", "Carolina Silva Lucena Dantas",
-    "Neiane Andreato", "Luana Caixeta Paz", "Larissa Carolina Araujo Vieira",
-    "Nannashara Cotrim Santana De Rez", "Antonio Ferreira Lima Filho",
-    "Mariana Carvalho Pinheiro", "Isaet Gomes Da Silva Morais",
-    "Marcello Novaes Fernandes Espind", "Cliente Rotativo Scs", "Bradesco Agencia 0606",
-    "N&N Ass. E Cons Empresarial", "Bradesco S.A Dcps Varejo", "Bradesco Prime",
+    "Atlantico Engenharia Ltda",
+    "Cliente Rotativo Scs", 
+    "Bradesco Agencia 0606",
+    "N&N Ass. E Cons Empresarial", 
+    "Bradesco S.A Dcps Varejo", "Bradesco Prime",
     "Bradesco Empresas", "Centro Auditivo Telex", "Top Tier", "Relações Institucionais",
-    "Paulus Livraria", "Conselho Regional De Economia", "Ana Cristina Da Guarda Santana",
-    "Keite Xavier De Oliveira", "Atlantico Engenharia Ltda", "Maira Cantieri Silveira Vieira",
-    "Rafael Martins Aragao", "Samuel Correia Queiroz"
+    "Paulus Livraria", "Conselho Regional De Economia", 
+     "Atlantico Engenharia Ltda", "Maira Cantieri Silveira Vieira"
+    
 ]
 
 # --- FORMULÁRIO DE ENTRADA ---
