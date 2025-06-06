@@ -60,7 +60,7 @@ if submit_button:
         if not cliente_res or not cliente_res.data:
             st.error("Código do cliente não encontrado.")
         else:
-            cod_cliente = cliente_res.data[0]["cod_mensalista"]
+            cod_cliente = cliente_res.data[0]["cod_cliente"]
 
             insert_response = supabase.table("entradas").insert({
                 "id_entrada": proximo_id,
