@@ -19,7 +19,7 @@ clientes_lista = [
     "Cliente Rotativo Taguatinga",
     "Joao Siqueira Kaya",
     "Banco Bradesco Sa - Agencia Taguatinga",
-    "Bradesco S.A - Prime Taguatinga,Agencia 3309-0 Ag Empresas Brasilia Ii"
+    "Bradesco S.A - Prime Taguatinga","Agencia 3309-0 Ag Empresas Brasilia Ii"
 ]
 
 # --- FORMULÁRIO DE ENTRADA ---
