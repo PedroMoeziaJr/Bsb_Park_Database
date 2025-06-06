@@ -41,6 +41,7 @@ with st.form("form_entrada"):
     hora_entrada = st.time_input("Hora da entrada", value=datetime.now().time())
     submit_button = st.form_submit_button("Registrar entrada")
 
+# Função para obter último ID
 def get_last_id():
     response = supabase.table("entradas").select("id_entrada").order("id_entrada", desc=True).limit(1).execute()
     if not response or not response.data:
@@ -111,10 +112,12 @@ try:
                     if st.button(f"Excluir {id_entrada}", key=f"del_{id_entrada}"):
                         try:
                             del_response = supabase.table("entradas").delete().eq("id_entrada", id_entrada).execute()
-                            st.write(del_response)  # <-- Veja o que retorna aqui para te ajudar
-                            # Ajuste aqui depois conforme o retorno
-                            st.success(f"Entrada {id_entrada} excluída.")
-                            st.experimental_rerun()
+                            # Não usamos status_code porque a API supabase Python não retorna assim
+                            if del_response.data is not None:
+                                st.success(f"Entrada {id_entrada} excluída.")
+                                st.warning("Por favor, atualize a página para ver as mudanças.")
+                            else:
+                                st.error(f"Erro ao excluir entrada {id_entrada}.")
                         except Exception as e:
                             st.error(f"Erro ao excluir entrada: {e}")
 
@@ -128,4 +131,3 @@ try:
 
 except Exception as e:
     st.error(f"Erro ao consultar entradas: {e}")
-
