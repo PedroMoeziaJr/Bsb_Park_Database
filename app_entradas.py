@@ -41,7 +41,6 @@ with st.form("form_entrada"):
     hora_entrada = st.time_input("Hora da entrada", value=datetime.now().time())
     submit_button = st.form_submit_button("Registrar entrada")
 
-# Função para obter último ID
 def get_last_id():
     response = supabase.table("entradas").select("id_entrada").order("id_entrada", desc=True).limit(1).execute()
     if not response or not response.data:
@@ -50,9 +49,7 @@ def get_last_id():
 
 if submit_button:
     try:
-        # Combina data e hora escolhidas
         data_hora_entrada = datetime.combine(data_entrada, hora_entrada)
-
         ultimo_id = get_last_id()
         proximo_id = ultimo_id + 1
 
@@ -114,11 +111,10 @@ try:
                     if st.button(f"Excluir {id_entrada}", key=f"del_{id_entrada}"):
                         try:
                             del_response = supabase.table("entradas").delete().eq("id_entrada", id_entrada).execute()
-                            if del_response.error is None:
-                                st.success(f"Entrada {id_entrada} excluída.")
-                                st.experimental_rerun()
-                            else:
-                                st.error(f"Erro ao excluir entrada {id_entrada}: {del_response.error.message}")
+                            st.write(del_response)  # <-- Veja o que retorna aqui para te ajudar
+                            # Ajuste aqui depois conforme o retorno
+                            st.success(f"Entrada {id_entrada} excluída.")
+                            st.experimental_rerun()
                         except Exception as e:
                             st.error(f"Erro ao excluir entrada: {e}")
 
