@@ -56,7 +56,7 @@ if submit_button:
         ultimo_id = get_last_id()
         proximo_id = ultimo_id + 1
 
-        cliente_res = supabase.table("clientes").select("id_cliente").eq("nome_cliente", tipo_cliente).execute()
+        cliente_res = supabase.table("clientes").select("cod_cliente").eq("nome_cliente", tipo_cliente).execute()
         if not cliente_res or not cliente_res.data:
             st.error("Código do cliente não encontrado.")
         else:
