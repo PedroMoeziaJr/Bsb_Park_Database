@@ -91,18 +91,6 @@ try:
         .select("id_entrada, tipo_cliente, valor_entrada, forma_pagamento, qtd_entradas, data_entrada") \
         .gte("data_entrada", inicio_dia) \
         .lte("data_entrada", fim_dia) \
-        .eq("tipo_cliente", "Cliente Rotativo Scs") \
-        .order("data_entrada", desc=True) \
-        .execute()
-
-    # Para pegar todas entradas dos clientes da lista SCS:
-    # Vamos fazer um filtro em Python em vez de supabase eq(), pois queremos todos clientes da lista SCS
-    # Então substituiremos a query acima por:
-
-    consulta = supabase.table("entradas") \
-        .select("id_entrada, tipo_cliente, valor_entrada, forma_pagamento, qtd_entradas, data_entrada") \
-        .gte("data_entrada", inicio_dia) \
-        .lte("data_entrada", fim_dia) \
         .order("data_entrada", desc=True) \
         .execute()
 
@@ -119,7 +107,6 @@ try:
                 data_hora = datetime.fromisoformat(entrada["data_entrada"]).strftime("%H:%M:%S")
                 id_entrada = entrada["id_entrada"]
 
-                # Botão para excluir entrada
                 col1, col2 = st.columns([9,1])
                 with col1:
                     st.markdown(f"- **{cliente}** | R$ {valor:.2f} | {pagamento} | Qtd: {qtd} | Hora: {data_hora}")
@@ -127,11 +114,11 @@ try:
                     if st.button(f"Excluir {id_entrada}", key=f"del_{id_entrada}"):
                         try:
                             del_response = supabase.table("entradas").delete().eq("id_entrada", id_entrada).execute()
-                            if del_response.status_code == 204:
+                            if del_response.error is None:
                                 st.success(f"Entrada {id_entrada} excluída.")
                                 st.experimental_rerun()
                             else:
-                                st.error(f"Erro ao excluir entrada {id_entrada}.")
+                                st.error(f"Erro ao excluir entrada {id_entrada}: {del_response.error.message}")
                         except Exception as e:
                             st.error(f"Erro ao excluir entrada: {e}")
 
@@ -145,3 +132,4 @@ try:
 
 except Exception as e:
     st.error(f"Erro ao consultar entradas: {e}")
+
