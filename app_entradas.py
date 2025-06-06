@@ -1,8 +1,8 @@
 import streamlit as st
 from supabase import create_client, Client
-from datetime import datetime, timedelta
+import pandas as pd
 
-# Inicializa conexão com Supabase
+# Conexão com o Supabase
 @st.cache_resource
 def init_connection():
     url = st.secrets["SUPABASE_URL"]
@@ -11,121 +11,65 @@ def init_connection():
 
 supabase: Client = init_connection()
 
-st.title("Caixa SCS")
+st.title("📊 Visualização de Dados do Estacionamento")
 
-# Função para obter lista de clientes filtrados (Tickets_Convenio ou Rotativo)
-def get_clientes_filtrados():
+# Menu lateral
+opcao = st.sidebar.radio("Escolha a Tabela", ["Clientes Cadastrados", "Caixas", "Despesas", "Estacionamentos"])
+
+# 🔹 Estacionamentos (filiais)
+if opcao == "Estacionamentos":
+    st.subheader("📍 Estacionamentos Cadastrados")
     try:
-        response = supabase.table("clientes") \
-            .select("nome_cliente, tipo_de_cliente, filial_id") \
-            .in_("tipo_de_cliente", ["Tickets_Convenio", "Rotativo"]) \
+        filiais = supabase.table("filiais").select("id_filial, f_nome").execute()
+        st.dataframe(pd.DataFrame(filiais.data))
+    except Exception as e:
+        st.error(f"Erro ao carregar filiais: {e}")
+
+# 🔹 Clientes Cadastrados
+elif opcao == "Clientes Cadastrados":
+    st.subheader("👤 Clientes Cadastrados")
+    try:
+        filiais = supabase.table("filiais").select("id_filial, f_nome").execute()
+        filiais_opcoes = {f["f_nome"]: f["id_filial"] for f in filiais.data}
+        nome_filial = st.selectbox("Selecione o Estacionamento", list(filiais_opcoes.keys()))
+        id_filial = filiais_opcoes[nome_filial]
+
+        try:
+            clientes = supabase.table("clientes") \
+                .select("*") \
+                .eq("cod_estacionamento", id_filial) \
+                .execute()
+            st.dataframe(pd.DataFrame(clientes.data))
+        except Exception as e:
+            st.error(f"Erro ao buscar clientes: {e}")
+    except Exception as e:
+        st.error(f"Erro ao carregar lista de filiais: {e}")
+
+# 🔹 Caixas (entradas)
+elif opcao == "Caixas":
+    st.subheader("💰 Movimentação de Caixa")
+    data_caixa = st.date_input("Selecione a Data")
+    try:
+        entradas = supabase.table("entradas") \
+            .select("*") \
+            .like("data_entrada", f"{data_caixa}%" ) \
             .execute()
-        
-        if response.data:
-            # Filtra só clientes da filial SCS (supondo que o id_filial de SCS seja 1, ajuste conforme seu BD)
-            clientes_scs = [c["nome_cliente"] for c in response.data if c["filial_id"] == 1]
-            return sorted(clientes_scs)
-        else:
-            return []
+        st.dataframe(pd.DataFrame(entradas.data))
     except Exception as e:
-        st.error("Erro ao buscar clientes")
-        return []
+        st.error(f"Erro ao buscar entradas: {e}")
 
-# Busca clientes para o selectbox
-clientes_lista = get_clientes_filtrados()
-
-# --- FORMULÁRIO DE ENTRADA ---
-st.subheader("Registrar nova entrada")
-with st.form("form_entrada"):
-    tipo_cliente = st.selectbox("Cliente", clientes_lista)
-    forma_pagamento = st.selectbox("Forma de pagamento", ["dinheiro", "cartão", "Apurado", "pix"])
-    valor_entrada = st.number_input("Valor da entrada (R$)", min_value=0.0, format="%.2f")
-    qtd_entradas = st.number_input("Quantidade de entradas", min_value=1, step=1)
-    data_entrada = st.date_input("Data da entrada", value=datetime.now().date())
-    hora_entrada = st.time_input("Hora da entrada", value=datetime.now().time())
-    submit_button = st.form_submit_button("Registrar entrada")
-
-# Função para obter último ID
-def get_last_id():
-    response = supabase.table("entradas").select("id_entrada").order("id_entrada", desc=True).limit(1).execute()
-    if not response or not response.data:
-        return 20845
-    return response.data[0]["id_entrada"]
-
-if submit_button:
+# 🔹 Despesas
+elif opcao == "Despesas":
+    st.subheader("💸 Despesas")
+    mes = st.selectbox("Selecione o mês", [
+        "01", "02", "03", "04", "05", "06",
+        "07", "08", "09", "10", "11", "12"
+    ])
     try:
-        ultimo_id = get_last_id()
-        proximo_id = ultimo_id + 1
-
-        cliente_res = supabase.table("clientes").select("cod_mensalista").eq("nome_cliente", tipo_cliente).execute()
-        if not cliente_res or not cliente_res.data:
-            st.error("Código do cliente não encontrado.")
-        else:
-            cod_cliente = cliente_res.data[0]["cod_mensalista"]
-            data_hora_entrada = datetime.combine(data_entrada, hora_entrada).isoformat()
-
-            insert_response = supabase.table("entradas").insert({
-                "id_entrada": proximo_id,
-                "data_entrada": data_hora_entrada,
-                "tipo_cliente": tipo_cliente,
-                "cod_cliente": cod_cliente,
-                "forma_pagamento": forma_pagamento,
-                "valor_entrada": valor_entrada,
-                "qtd_entradas": qtd_entradas
-            }).execute()
-
-            if insert_response.data:
-                st.success(f"Entrada registrada com sucesso! ID: {proximo_id}")
-            else:
-                st.error("Erro ao inserir no banco de dados.")
+        despesas = supabase.table("despesas") \
+            .select("*") \
+            .like("data", f"2024-{mes}-%") \
+            .execute()
+        st.dataframe(pd.DataFrame(despesas.data))
     except Exception as e:
-        st.error(f"Ocorreu um erro ao registrar a entrada: {e}")
-
-# --- CONSULTA DE ENTRADAS POR DIA ---
-st.subheader("Consultar entradas por data")
-
-data_consulta = st.date_input("Selecione a data para consulta", value=datetime.now().date())
-inicio_dia = datetime.combine(data_consulta, datetime.min.time()).isoformat()
-fim_dia = datetime.combine(data_consulta, datetime.max.time()).isoformat()
-
-try:
-    consulta = supabase.table("entradas") \
-        .select("id_entrada, tipo_cliente, valor_entrada, forma_pagamento, qtd_entradas, data_entrada") \
-        .gte("data_entrada", inicio_dia) \
-        .lte("data_entrada", fim_dia) \
-        .eq("tipo_cliente", tipo_cliente) \
-        .order("data_entrada", desc=True) \
-        .execute()
-
-    if consulta.data:
-        st.markdown(f"### Entradas em {data_consulta.strftime('%d/%m/%Y')}")
-        total_valor = 0
-        for entrada in consulta.data:
-            id_entrada = entrada["id_entrada"]
-            cliente = entrada["tipo_cliente"]
-            valor = entrada["valor_entrada"]
-            pagamento = entrada["forma_pagamento"]
-            qtd = entrada["qtd_entradas"]
-            data_hora = datetime.fromisoformat(entrada["data_entrada"]).strftime("%H:%M:%S")
-
-            col1, col2 = st.columns([8,1])
-            with col1:
-                st.markdown(f"- **{cliente}** | R$ {valor:.2f} | {pagamento} | Qtd: {qtd} | Hora: {data_hora}")
-            with col2:
-                if st.button(f"Excluir {id_entrada}", key=f"excluir_{id_entrada}"):
-                    del_response = supabase.table("entradas").delete().eq("id_entrada", id_entrada).execute()
-                    if del_response.status_code == 204:
-                        st.success(f"Entrada {id_entrada} excluída com sucesso!")
-                        st.experimental_rerun()
-                    else:
-                        st.error(f"Erro ao excluir entrada {id_entrada}")
-
-            total_valor += valor
-
-        st.success(f"💰 Total do dia: R$ {total_valor:.2f}")
-    else:
-        st.info("Nenhuma entrada encontrada para esta data.")
-
-except Exception as e:
-    st.error(f"Erro ao consultar entradas: {e}")
-
+        st.error(f"Erro ao buscar despesas: {e}")
