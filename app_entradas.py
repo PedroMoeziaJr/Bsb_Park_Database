@@ -1,8 +1,8 @@
 import streamlit as st
 from supabase import create_client, Client
-from datetime import datetime, timedelta
+from datetime import datetime, date, time
 
-# Inicializa conexão com Supabase
+# --- CONEXÃO COM SUPABASE ---
 @st.cache_resource
 def init_connection():
     url = st.secrets["SUPABASE_URL"]
@@ -11,102 +11,108 @@ def init_connection():
 
 supabase: Client = init_connection()
 
-st.title("Caixa SCS")
+st.title("📥 Caixa - SCS")
 
-# Lista de clientes
-clientes_lista = [
-    "Alex De Brito Bonifacio", "Alex Junio De Sousa Silva", "Atlantico Engenharia Ltda",
-    "Bruna Ayres Cardoso", "Gabriel Ferreira Rego", "Guilherme Costa Macedo",
-    "Joao Costa E Silva", "Jorge Luiz De Souza", "Jose Pereira De Araujo", "Rodrigo Merlo Nunes",
-    "Leandro Ribeiro De Lima", "Milena Da Silva Santos Borges", "Tania Mara Meneses De Faria",
-    "Vasco Azevedo", "Sergio Henrique Moreira Cunha", "Carolina Silva Lucena Dantas",
-    "Neiane Andreato", "Luana Caixeta Paz", "Larissa Carolina Araujo Vieira",
-    "Nannashara Cotrim Santana De Rez", "Antonio Ferreira Lima Filho",
-    "Mariana Carvalho Pinheiro", "Isaet Gomes Da Silva Morais",
-    "Marcello Novaes Fernandes Espind", "Cliente Rotativo Scs", "Bradesco Agencia 0606",
+# --- LISTA RESTRITA DE CLIENTES ---
+clientes_filtrados = [
+    "Atlantico Engenharia Ltda", "Cliente Rotativo Scs", "Bradesco Agencia 0606",
     "N&N Ass. E Cons Empresarial", "Bradesco S.A Dcps Varejo", "Bradesco Prime",
     "Bradesco Empresas", "Centro Auditivo Telex", "Top Tier", "Relações Institucionais",
-    "Paulus Livraria", "Conselho Regional De Economia", "Ana Cristina Da Guarda Santana",
-    "Keite Xavier De Oliveira", "Atlantico Engenharia Ltda", "Maira Cantieri Silveira Vieira",
-    "Rafael Martins Aragao", "Samuel Correia Queiroz"
+    "Paulus Livraria", "Conselho Regional De Economia", "Maira Cantieri Silveira Vieira"
 ]
 
-# --- FORMULÁRIO DE ENTRADA ---
-st.subheader("Registrar nova entrada")
+# --- FORMULÁRIO DE NOVA ENTRADA ---
+st.subheader("📝 Registrar nova entrada")
+
 with st.form("form_entrada"):
-    tipo_cliente = st.selectbox("Tipo de cliente", clientes_lista)
+    tipo_cliente = st.selectbox("Cliente", clientes_filtrados)
     forma_pagamento = st.selectbox("Forma de pagamento", ["dinheiro", "cartão", "Apurado", "pix"])
     valor_entrada = st.number_input("Valor da entrada (R$)", min_value=0.0, format="%.2f")
     qtd_entradas = st.number_input("Quantidade de entradas", min_value=1, step=1)
-    submit_button = st.form_submit_button("Registrar entrada")
 
-# Função para obter último ID
-def get_last_id():
-    response = supabase.table("entradas").select("id_entrada").order("id_entrada", desc=True).limit(1).execute()
-    if not response or not response.data:
-        return 20845
-    return response.data[0]["id_entrada"]
+    # Campo para data e hora manuais
+    data_manual = st.date_input("Data da entrada", value=datetime.now().date())
+    hora_manual = st.time_input("Hora da entrada", value=datetime.now().time())
 
-# Registro no banco
-if submit_button:
+    submit = st.form_submit_button("💾 Registrar entrada")
+
+# --- FUNÇÃO PARA PRÓXIMO ID ---
+def get_next_id():
+    res = supabase.table("entradas").select("id_entrada").order("id_entrada", desc=True).limit(1).execute()
+    return (res.data[0]["id_entrada"] + 1) if res.data else 20845
+
+# --- INSERIR ENTRADA ---
+if submit:
     try:
-        ultimo_id = get_last_id()
-        proximo_id = ultimo_id + 1
-
-        cliente_res = supabase.table("clientes").select("cod_mensalista").eq("nome_cliente", tipo_cliente).execute()
-        if not cliente_res or not cliente_res.data:
-            st.error("Código do cliente não encontrado.")
+        cliente_info = supabase.table("clientes").select("cod_mensalista").eq("nome_cliente", tipo_cliente).execute()
+        if not cliente_info.data:
+            st.error("Cliente não encontrado no banco de dados.")
         else:
-            cod_cliente = cliente_res.data[0]["cod_mensalista"]
+            cod_cliente = cliente_info.data[0]["cod_mensalista"]
+            novo_id = get_next_id()
 
-            insert_response = supabase.table("entradas").insert({
-                "id_entrada": proximo_id,
-                "data_entrada": datetime.now().isoformat(),
+            data_hora_completa = datetime.combine(data_manual, hora_manual).isoformat()
+
+            entrada = {
+                "id_entrada": novo_id,
+                "data_entrada": data_hora_completa,
                 "tipo_cliente": tipo_cliente,
                 "cod_cliente": cod_cliente,
                 "forma_pagamento": forma_pagamento,
                 "valor_entrada": valor_entrada,
                 "qtd_entradas": qtd_entradas
-            }).execute()
+            }
 
-            if insert_response.data:
-                st.success(f"Entrada registrada com sucesso! ID: {proximo_id}")
+            resp = supabase.table("entradas").insert(entrada).execute()
+
+            if resp.data:
+                st.success(f"✅ Entrada registrada com sucesso! ID: {novo_id}")
             else:
-                st.error("Erro ao inserir no banco de dados.")
+                st.error("❌ Erro ao salvar no banco de dados.")
     except Exception as e:
-        st.error(f"Ocorreu um erro ao registrar a entrada: {e}")
+        st.error(f"Erro ao registrar entrada: {e}")
 
-# --- CONSULTA DE ENTRADAS POR DIA ---
-st.subheader("Consultar entradas por data")
+# --- CONSULTA E EXCLUSÃO DE ENTRADAS ---
+st.subheader("📆 Consultar e excluir entradas")
 
-data_consulta = st.date_input("Selecione a data para consulta", value=datetime.now().date())
-inicio_dia = datetime.combine(data_consulta, datetime.min.time()).isoformat()
-fim_dia = datetime.combine(data_consulta, datetime.max.time()).isoformat()
+data_consulta = st.date_input("Selecione a data para consulta", key="consulta_data", value=datetime.now().date())
+inicio = datetime.combine(data_consulta, time.min).isoformat()
+fim = datetime.combine(data_consulta, time.max).isoformat()
 
 try:
-    consulta = supabase.table("entradas") \
-        .select("tipo_cliente, valor_entrada, forma_pagamento, qtd_entradas, data_entrada") \
-        .gte("data_entrada", inicio_dia) \
-        .lte("data_entrada", fim_dia) \
+    resultado = supabase.table("entradas") \
+        .select("id_entrada, tipo_cliente, valor_entrada, forma_pagamento, qtd_entradas, data_entrada") \
+        .gte("data_entrada", inicio) \
+        .lte("data_entrada", fim) \
         .order("data_entrada", desc=True) \
         .execute()
 
-    if consulta.data:
-        st.markdown(f"### Entradas em {data_consulta.strftime('%d/%m/%Y')}")
-        total_valor = 0
-        for entrada in consulta.data:
-            cliente = entrada["tipo_cliente"]
-            valor = entrada["valor_entrada"]
-            pagamento = entrada["forma_pagamento"]
-            qtd = entrada["qtd_entradas"]
-            data_hora = datetime.fromisoformat(entrada["data_entrada"]).strftime("%H:%M:%S")
+    if resultado.data:
+        total = 0.0
+        for row in resultado.data:
+            id_entrada = row["id_entrada"]
+            cliente = row["tipo_cliente"]
+            valor = row["valor_entrada"]
+            forma = row["forma_pagamento"]
+            qtd = row["qtd_entradas"]
+            hora = datetime.fromisoformat(row["data_entrada"]).strftime("%H:%M:%S")
 
-            st.markdown(f"- **{cliente}** | R$ {valor:.2f} | {pagamento} | Qtd: {qtd} | Hora: {data_hora}")
-            total_valor += valor
+            st.markdown(f"**ID {id_entrada}** | {cliente} | 💰 R$ {valor:.2f} | {forma} | Qtd: {qtd} | 🕒 {hora}")
+            col1, col2 = st.columns([8, 2])
+            with col2:
+                if st.button(f"❌ Excluir {id_entrada}", key=f"del_{id_entrada}"):
+                    try:
+                        supabase.table("entradas").delete().eq("id_entrada", id_entrada).execute()
+                        st.success(f"Entrada ID {id_entrada} excluída com sucesso.")
+                        st.experimental_rerun()
+                    except Exception as e:
+                        st.error(f"Erro ao excluir entrada: {e}")
 
-        st.success(f"💰 Total do dia: R$ {total_valor:.2f}")
+            total += valor
+        st.success(f"💰 Total do dia: R$ {total:.2f}")
     else:
-        st.info("Nenhuma entrada encontrada para esta data.")
+        st.info("Nenhuma entrada registrada para este dia.")
 
 except Exception as e:
     st.error(f"Erro ao consultar entradas: {e}")
+
