@@ -30,18 +30,10 @@ clientes_lista = [
     "Maira Cantieri Silveira Vieira"
 ]
 
-# Simulação do usuário logado (substitua conforme seu sistema de login)
-if "usuario_tipo_cliente" not in st.session_state:
-    st.session_state.usuario_tipo_cliente = st.selectbox("Selecione seu nome (usuário logado)", clientes_lista)
-
-usuario_tipo_cliente = st.session_state.usuario_tipo_cliente
-
-st.write(f"**Você está logado como:** {usuario_tipo_cliente}")
-
 # --- FORMULÁRIO DE ENTRADA ---
 st.subheader("Registrar nova entrada")
 with st.form("form_entrada"):
-    tipo_cliente = st.selectbox("Tipo de cliente", clientes_lista, index=clientes_lista.index(usuario_tipo_cliente))
+    tipo_cliente = st.selectbox("Tipo de cliente", clientes_lista)
     forma_pagamento = st.selectbox("Forma de pagamento", ["dinheiro", "cartão", "Apurado", "pix"])
     valor_entrada = st.number_input("Valor da entrada (R$)", min_value=0.0, format="%.2f")
     qtd_entradas = st.number_input("Quantidade de entradas", min_value=1, step=1)
@@ -56,42 +48,38 @@ def get_last_id():
 
 if submit_button:
     try:
-        # Só permite registrar entrada para o próprio usuário logado
-        if tipo_cliente != usuario_tipo_cliente:
-            st.error("Você só pode registrar entradas para o seu próprio nome.")
+        ultimo_id = get_last_id()
+        proximo_id = ultimo_id + 1
+
+        # Busca código do cliente e filial para validar
+        cliente_res = supabase.table("clientes").select("cod_mensalista, id_filial").eq("nome_cliente", tipo_cliente).execute()
+        if not cliente_res or not cliente_res.data:
+            st.error("Código do cliente não encontrado.")
         else:
-            ultimo_id = get_last_id()
-            proximo_id = ultimo_id + 1
-
-            # Busca código do cliente e filial para validar
-            cliente_res = supabase.table("clientes").select("cod_mensalista, id_filial").eq("nome_cliente", tipo_cliente).execute()
-            if not cliente_res or not cliente_res.data:
-                st.error("Código do cliente não encontrado.")
+            cliente_info = cliente_res.data[0]
+            if cliente_info["id_filial"] != "01_SCS":
+                st.error("Este cliente não pertence à filial SCS.")
             else:
-                cliente_info = cliente_res.data[0]
-                if cliente_info["id_filial"] != "01_SCS":
-                    st.error("Este cliente não pertence à filial SCS.")
-                else:
-                    cod_cliente = cliente_info["cod_mensalista"]
-                    insert_response = supabase.table("entradas").insert({
-                        "id_entrada": proximo_id,
-                        "data_entrada": data_hora_entrada.isoformat(),
-                        "tipo_cliente": tipo_cliente,
-                        "cod_cliente": cod_cliente,
-                        "forma_pagamento": forma_pagamento,
-                        "valor_entrada": valor_entrada,
-                        "qtd_entradas": qtd_entradas
-                    }).execute()
+                cod_cliente = cliente_info["cod_mensalista"]
+                insert_response = supabase.table("entradas").insert({
+                    "id_entrada": proximo_id,
+                    "data_entrada": data_hora_entrada.isoformat(),
+                    "tipo_cliente": tipo_cliente,
+                    "cod_cliente": cod_cliente,
+                    "forma_pagamento": forma_pagamento,
+                    "valor_entrada": valor_entrada,
+                    "qtd_entradas": qtd_entradas
+                }).execute()
 
-                    if insert_response.data:
-                        st.success(f"Entrada registrada com sucesso! ID: {proximo_id}")
-                    else:
-                        st.error("Erro ao inserir no banco de dados.")
+                if insert_response.data:
+                    st.success(f"Entrada registrada com sucesso! ID: {proximo_id}")
+                else:
+                    st.error("Erro ao inserir no banco de dados.")
     except Exception as e:
         st.error(f"Ocorreu um erro ao registrar a entrada: {e}")
 
 # --- CONSULTA DE ENTRADAS POR DIA ---
-st.subheader("Consultar suas entradas por data")
+st.subheader("Consultar entradas por data")
 data_consulta = st.date_input("Selecione a data para consulta", value=datetime.now().date())
 
 inicio_dia = datetime.combine(data_consulta, datetime.min.time()).isoformat()
@@ -104,12 +92,11 @@ try:
         .gte("data_entrada", inicio_dia) \
         .lte("data_entrada", fim_dia) \
         .eq("clientes.id_filial", "01_SCS") \
-        .eq("tipo_cliente", usuario_tipo_cliente) \
         .order("data_entrada", desc=True) \
         .execute()
 
     if consulta.data:
-        st.markdown(f"### Suas entradas em {data_consulta.strftime('%d/%m/%Y')}")
+        st.markdown(f"### Entradas em {data_consulta.strftime('%d/%m/%Y')}")
         total_valor = 0
         for entrada in consulta.data:
             entrada_id = entrada["id_entrada"]
