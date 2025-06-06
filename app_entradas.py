@@ -11,15 +11,24 @@ def init_connection():
 
 supabase: Client = init_connection()
 
-st.title("Caixa Taguatinga")
+st.title("Caixa SCS")
 
 # Lista de clientes
 clientes_lista = [
-    "Farmacotecnica Instituto De Manipulacoes",
-    "Cliente Rotativo Taguatinga",
-    "Joao Siqueira Kaya",
-    "Banco Bradesco Sa - Agencia Taguatinga",
-    "Bradesco S.A - Prime Taguatinga,Agencia 3309-0 Ag Empresas Brasilia Ii"
+    "Alex De Brito Bonifacio", "Alex Junio De Sousa Silva", "Atlantico Engenharia Ltda",
+    "Bruna Ayres Cardoso", "Gabriel Ferreira Rego", "Guilherme Costa Macedo",
+    "Joao Costa E Silva", "Jorge Luiz De Souza", "Jose Pereira De Araujo", "Rodrigo Merlo Nunes",
+    "Leandro Ribeiro De Lima", "Milena Da Silva Santos Borges", "Tania Mara Meneses De Faria",
+    "Vasco Azevedo", "Sergio Henrique Moreira Cunha", "Carolina Silva Lucena Dantas",
+    "Neiane Andreato", "Luana Caixeta Paz", "Larissa Carolina Araujo Vieira",
+    "Nannashara Cotrim Santana De Rez", "Antonio Ferreira Lima Filho",
+    "Mariana Carvalho Pinheiro", "Isaet Gomes Da Silva Morais",
+    "Marcello Novaes Fernandes Espind", "Cliente Rotativo Scs", "Bradesco Agencia 0606",
+    "N&N Ass. E Cons Empresarial", "Bradesco S.A Dcps Varejo", "Bradesco Prime",
+    "Bradesco Empresas", "Centro Auditivo Telex", "Top Tier", "Relações Institucionais",
+    "Paulus Livraria", "Conselho Regional De Economia", "Ana Cristina Da Guarda Santana",
+    "Keite Xavier De Oliveira", "Atlantico Engenharia Ltda", "Maira Cantieri Silveira Vieira",
+    "Rafael Martins Aragao", "Samuel Correia Queiroz"
 ]
 
 # --- FORMULÁRIO DE ENTRADA ---
@@ -35,7 +44,7 @@ with st.form("form_entrada"):
 def get_last_id():
     response = supabase.table("entradas").select("id_entrada").order("id_entrada", desc=True).limit(1).execute()
     if not response or not response.data:
-        return 20845  # valor inicial
+        return 20845
     return response.data[0]["id_entrada"]
 
 # Registro no banco
@@ -101,4 +110,3 @@ try:
 
 except Exception as e:
     st.error(f"Erro ao consultar entradas: {e}")
-
