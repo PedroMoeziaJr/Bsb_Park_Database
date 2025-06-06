@@ -1,6 +1,6 @@
 import streamlit as st
 from supabase import create_client, Client
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Inicializa conexão com Supabase
 @st.cache_resource
@@ -13,7 +13,7 @@ supabase: Client = init_connection()
 
 st.title("Caixa SCS")
 
-# Função para obter lista de clientes filtrados (tipo_de_cliente = Tickets_Convenio ou Rotativo e filial_id = 01_SCS)
+# Função para obter lista de clientes filtrados conforme seu pedido
 def get_clientes_filtrados():
     response = supabase.table("clientes") \
         .select("nome_cliente") \
@@ -22,12 +22,25 @@ def get_clientes_filtrados():
         .order("nome_cliente") \
         .execute()
 
-    if response.error:
-        st.error(f"Erro ao buscar clientes: {response.error.message}")
-        return []
-    else:
-        return [cliente["nome_cliente"] for cliente in response.data]
+    # Debug print para ver o retorno no log (remova depois)
+    # print(response)
 
+    if response is None:
+        st.error("Erro na consulta: resposta nula")
+        return []
+    
+    # Verifica status_code na resposta (exemplo da versão antiga)
+    if "status_code" in response and response["status_code"] != 200:
+        st.error(f"Erro na consulta: status {response['status_code']}")
+        return []
+
+    if "data" in response and response["data"]:
+        return [cliente["nome_cliente"] for cliente in response["data"]]
+    else:
+        st.info("Nenhum cliente encontrado.")
+        return []
+
+# Carrega a lista de clientes para o selectbox
 clientes_lista = get_clientes_filtrados()
 
 # --- FORMULÁRIO DE ENTRADA ---
@@ -44,9 +57,9 @@ with st.form("form_entrada"):
 # Função para obter último ID
 def get_last_id():
     response = supabase.table("entradas").select("id_entrada").order("id_entrada", desc=True).limit(1).execute()
-    if not response or not response.data:
+    if response is None or not response.get("data"):
         return 20845
-    return response.data[0]["id_entrada"]
+    return response["data"][0]["id_entrada"]
 
 # Registro no banco
 if submit_button:
@@ -54,35 +67,35 @@ if submit_button:
         ultimo_id = get_last_id()
         proximo_id = ultimo_id + 1
 
-        # Busca cod_mensalista do cliente selecionado
-        cliente_res = supabase.table("clientes") \
-            .select("cod_mensalista") \
-            .eq("nome_cliente", tipo_cliente) \
-            .eq("filial_id", "01_SCS") \
-            .execute()
+        cliente_res = supabase.table("clientes").select("cod_mensalista", "filial_id") \
+            .eq("nome_cliente", tipo_cliente).execute()
 
-        if not cliente_res or not cliente_res.data:
+        if cliente_res is None or not cliente_res.get("data"):
             st.error("Código do cliente não encontrado.")
         else:
-            cod_cliente = cliente_res.data[0]["cod_mensalista"]
+            cod_cliente = cliente_res["data"][0]["cod_mensalista"]
+            filial_id = cliente_res["data"][0]["filial_id"]
 
-            # Combina data e hora escolhidas para datetime completo
-            data_hora_entrada = datetime.combine(data_entrada, hora_entrada)
-
-            insert_response = supabase.table("entradas").insert({
-                "id_entrada": proximo_id,
-                "data_entrada": data_hora_entrada.isoformat(),
-                "tipo_cliente": tipo_cliente,
-                "cod_cliente": cod_cliente,
-                "forma_pagamento": forma_pagamento,
-                "valor_entrada": valor_entrada,
-                "qtd_entradas": qtd_entradas
-            }).execute()
-
-            if insert_response.data:
-                st.success(f"Entrada registrada com sucesso! ID: {proximo_id}")
+            # Garantir que só registre para filial 01_SCS
+            if filial_id != "01_SCS":
+                st.error("Cliente não pertence ao estacionamento SCS.")
             else:
-                st.error("Erro ao inserir no banco de dados.")
+                data_hora_entrada = datetime.combine(data_entrada, hora_entrada).isoformat()
+
+                insert_response = supabase.table("entradas").insert({
+                    "id_entrada": proximo_id,
+                    "data_entrada": data_hora_entrada,
+                    "tipo_cliente": tipo_cliente,
+                    "cod_cliente": cod_cliente,
+                    "forma_pagamento": forma_pagamento,
+                    "valor_entrada": valor_entrada,
+                    "qtd_entradas": qtd_entradas
+                }).execute()
+
+                if insert_response and insert_response.get("data"):
+                    st.success(f"Entrada registrada com sucesso! ID: {proximo_id}")
+                else:
+                    st.error("Erro ao inserir no banco de dados.")
     except Exception as e:
         st.error(f"Ocorreu um erro ao registrar a entrada: {e}")
 
@@ -94,51 +107,43 @@ inicio_dia = datetime.combine(data_consulta, datetime.min.time()).isoformat()
 fim_dia = datetime.combine(data_consulta, datetime.max.time()).isoformat()
 
 try:
-    # Consulta entradas do estacionamento SCS (filial_id = '01_SCS') só para clientes que estejam nessa filial
     consulta = supabase.table("entradas") \
-        .select("id_entrada, tipo_cliente, valor_entrada, forma_pagamento, qtd_entradas, data_entrada, cod_cliente") \
+        .select("id_entrada, tipo_cliente, valor_entrada, forma_pagamento, qtd_entradas, data_entrada") \
         .gte("data_entrada", inicio_dia) \
         .lte("data_entrada", fim_dia) \
+        .eq("filial_id", "01_SCS") \
         .order("data_entrada", desc=True) \
         .execute()
 
-    if consulta.data:
-        # Filtra entradas para clientes que estejam em '01_SCS' via relacionamento com tabela clientes
-        cod_clientes_scs = [c['cod_mensalista'] for c in supabase.table("clientes").select("cod_mensalista").eq("filial_id", "01_SCS").execute().data]
+    if consulta and consulta.get("data"):
+        st.markdown(f"### Entradas em {data_consulta.strftime('%d/%m/%Y')}")
+        total_valor = 0
+        for entrada in consulta["data"]:
+            id_entrada = entrada["id_entrada"]
+            cliente = entrada["tipo_cliente"]
+            valor = entrada["valor_entrada"]
+            pagamento = entrada["forma_pagamento"]
+            qtd = entrada["qtd_entradas"]
+            data_hora = datetime.fromisoformat(entrada["data_entrada"]).strftime("%H:%M:%S")
 
-        entradas_scs = [e for e in consulta.data if e["cod_cliente"] in cod_clientes_scs]
-
-        if entradas_scs:
-            st.markdown(f"### Entradas em {data_consulta.strftime('%d/%m/%Y')}")
-            total_valor = 0
-            for entrada in entradas_scs:
-                cliente = entrada["tipo_cliente"]
-                valor = entrada["valor_entrada"]
-                pagamento = entrada["forma_pagamento"]
-                qtd = entrada["qtd_entradas"]
-                data_hora = datetime.fromisoformat(entrada["data_entrada"]).strftime("%H:%M:%S")
-                id_entrada = entrada["id_entrada"]
-
-                st.markdown(f"- **{cliente}** | R$ {valor:.2f} | {pagamento} | Qtd: {qtd} | Hora: {data_hora} | ID: {id_entrada}")
-
-            # Botão para excluir uma entrada por ID
-            id_para_excluir = st.number_input("Digite o ID da entrada para excluir", min_value=0, step=1)
-            if st.button("Excluir entrada"):
-                if id_para_excluir:
-                    delete_response = supabase.table("entradas").delete().eq("id_entrada", id_para_excluir).execute()
-                    if delete_response.error:
-                        st.error(f"Erro ao excluir entrada: {delete_response.error.message}")
-                    else:
-                        st.success(f"Entrada com ID {id_para_excluir} excluída com sucesso!")
+            # Exibir com botão para excluir
+            col1, col2 = st.columns([8,1])
+            with col1:
+                st.markdown(f"- **{cliente}** | R$ {valor:.2f} | {pagamento} | Qtd: {qtd} | Hora: {data_hora}")
+            with col2:
+                if st.button(f"Excluir {id_entrada}", key=f"del_{id_entrada}"):
+                    delete_response = supabase.table("entradas").delete().eq("id_entrada", id_entrada).execute()
+                    if delete_response and delete_response.get("status_code") == 204:
+                        st.success(f"Entrada ID {id_entrada} excluída com sucesso.")
                         st.experimental_rerun()
+                    else:
+                        st.error("Erro ao excluir a entrada.")
 
-            total_valor = sum(e["valor_entrada"] for e in entradas_scs)
-            st.success(f"💰 Total do dia: R$ {total_valor:.2f}")
-        else:
-            st.info("Nenhuma entrada encontrada para esta data no estacionamento SCS.")
+            total_valor += valor
+
+        st.success(f"💰 Total do dia: R$ {total_valor:.2f}")
     else:
         st.info("Nenhuma entrada encontrada para esta data.")
 
 except Exception as e:
     st.error(f"Erro ao consultar entradas: {e}")
-
