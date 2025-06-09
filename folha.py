@@ -4,8 +4,8 @@ from datetime import date
 from supabase import create_client, Client
 
 # Configuração do Supabase
-url = "https://SEU-PROJETO.supabase.co"
-key = "SUA-CHAVE-ANON"
+url = "https://clxuxrlqbkdadhkpzaly.supabase.co"
+key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseHV4cmxxYmtkYWRoa3B6YWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5Nzg3NjgsImV4cCI6MjA2NDU1NDc2OH0.aMgo3gBA9Rb_H-Oex2nQ8SccmSfMNKv8TwyAixan2Wk"
 supabase: Client = create_client(url, key)
 
 st.title("Folha de Pagamento")
