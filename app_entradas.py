@@ -28,6 +28,7 @@ clientes_lista = [
     "Paulus Livraria",
     "Conselho Regional De Economia",
     "Maira Cantieri Silveira",
+    "Audiocon Solucoes Auditivas LTDA",
     "Corporate GO"
 ]
 
