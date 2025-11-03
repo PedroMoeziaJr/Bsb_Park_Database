@@ -27,7 +27,8 @@ clientes_lista = [
     "Relações Institucionais",
     "Paulus Livraria",
     "Conselho Regional De Economia",
-    "Maira Cantieri Silveira"
+    "Maira Cantieri Silveira",
+    "Corporate GO"
 ]
 
 # --- FORMULÁRIO DE ENTRADA ---
