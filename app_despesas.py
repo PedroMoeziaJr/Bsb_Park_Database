@@ -6,9 +6,10 @@ from dateutil.parser import isoparse
 st.set_page_config(page_title="Despesas", page_icon="💸", layout="centered")
 st.title("Cadastro e Gestão de Despesas")
 
-# --- Conexão com Supabase via st.secrets ---
-url = st.secrets["supabase"]["url"]
-key = st.secrets["supabase"]["key"]
+# --- Conexão com Supabase (direto no código, sem secrets) ---
+# ⚠️ Substitua pelos valores reais do seu projeto Supabase
+url = "https://SEU_PROJETO.supabase.co"
+key = "SUA_ANON_KEY"
 supabase: Client = create_client(url, key)
 
 # --- Helpers ---
@@ -31,7 +32,6 @@ def listar_despesas_mes_vigente():
     dados = res.data or []
     filtrados = []
     for d in dados:
-        # tenta ler campo data como ISO; se for apenas 'YYYY-MM-DD', também funciona
         try:
             dt = isoparse(d["data"])
         except Exception:
@@ -75,9 +75,9 @@ with st.form("form_despesas"):
                 "cod_pagamento": cod_pagamento,
                 "data": str(data),  # 'YYYY-MM-DD'
                 "filial_id": filial_id,
-                "funcionário": funcionario,
+                "funcionário": funcionario,   # ⚠️ Confirme se sua tabela usa acento
                 "valor": float(valor),
-                "meio de pagamento": meio_pagamento,
+                "meio de pagamento": meio_pagamento,  # ⚠️ Confirme se sua tabela usa espaço
                 "recorrencia": recorrencia,
                 "conta": conta
             }
@@ -93,7 +93,6 @@ st.subheader("Despesas do mês vigente")
 despesas_mes = listar_despesas_mes_vigente()
 if despesas_mes:
     st.dataframe(despesas_mes, use_container_width=True)
-    # apagar
     ids_despesas = [d["cod_pagamento"] for d in despesas_mes if "cod_pagamento" in d]
     escolha = st.selectbox("Selecione o código da despesa para apagar", ids_despesas)
     if st.button("Apagar despesa selecionada"):
