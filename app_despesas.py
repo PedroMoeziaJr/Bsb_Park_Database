@@ -8,8 +8,8 @@ st.title("Cadastro e Gestão de Despesas")
 
 # --- Conexão com Supabase (direto no código, sem secrets) ---
 # ⚠️ Substitua pelos valores reais do seu projeto Supabase
-url = "https://clxuxrlqbkdadhkpzaly.supabase.co"
-key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseHV4cmxxYmtkYWRoa3B6YWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5Nzg3NjgsImV4cCI6MjA2NDU1NDc2OH0.aMgo3gBA9Rb_H-Oex2nQ8SccmSfMNKv8TwyAixan2Wk
+url = st.secrets["SUPABASE_URL"]
+key = st.secrets["SUPABASE_KEY"]
 supabase: Client = create_client(url, key)
 
 # --- Helpers ---
