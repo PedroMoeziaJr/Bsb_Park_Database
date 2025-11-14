@@ -6,11 +6,14 @@ from dateutil.parser import isoparse
 st.set_page_config(page_title="Despesas", page_icon="💸", layout="centered")
 st.title("Cadastro e Gestão de Despesas")
 
-# --- Conexão com Supabase (direto no código, sem secrets) ---
-# ⚠️ Substitua pelos valores reais do seu projeto Supabase
-url = st.secrets["SUPABASE_URL"]
-key = st.secrets["SUPABASE_KEY"]
-supabase: Client = create_client(url, key)
+# --- Conexão com Supabase via st.secrets ---
+@st.cache_resource
+def init_connection():
+    url = st.secrets["SUPABASE_URL"]
+    key = st.secrets["SUPABASE_KEY"]
+    return create_client(url, key)
+
+supabase: Client = init_connection()
 
 # --- Helpers ---
 def get_next_cod_pagamento():
@@ -75,9 +78,9 @@ with st.form("form_despesas"):
                 "cod_pagamento": cod_pagamento,
                 "data": str(data),  # 'YYYY-MM-DD'
                 "filial_id": filial_id,
-                "funcionário": funcionario,   # ⚠️ Confirme se sua tabela usa acento
+                "funcionario": funcionario,   # sem acento
                 "valor": float(valor),
-                "meio de pagamento": meio_pagamento,  # ⚠️ Confirme se sua tabela usa espaço
+                "meio_pagamento": meio_pagamento,  # sem espaço
                 "recorrencia": recorrencia,
                 "conta": conta
             }
