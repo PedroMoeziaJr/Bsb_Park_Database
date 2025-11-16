@@ -25,9 +25,9 @@ contas = [
     "Tributo", "Pessoal", "Contabil_Jurídica", "Outro"
 ]
 
-# --------------------------
+# ---------------------------------------------------
 # FORMULÁRIO DE DESPESAS
-# --------------------------
+# ---------------------------------------------------
 with st.form("form_despesa"):
     filial = st.selectbox("Filial", filiais)
     funcionario = st.text_input("Funcionário")
@@ -69,12 +69,18 @@ with st.form("form_despesa"):
         except Exception as e:
             st.error(f"Erro ao registrar despesa: {e}")
 
-# --------------------------
-# VISUALIZAÇÃO E EXCLUSÃO
-# --------------------------
-st.markdown("---")
-st.header("Visualização de Despesas")
+# ---------------------------------------------------
+# FILTRO AUTOMÁTICO PELO MÊS DA DATA ESCOLHIDA
+# ---------------------------------------------------
+mes_filtro = data_escolhida.month
+ano_filtro = data_escolhida.year
 
+st.markdown("---")
+st.header(f"Despesas de {mes_filtro:02d}/{ano_filtro}")
+
+# ---------------------------------------------------
+# VISUALIZAÇÃO E EXCLUSÃO
+# ---------------------------------------------------
 try:
     resposta = supabase.table("despesas").select("*").execute()
     df = resposta.data
@@ -85,38 +91,46 @@ try:
         df = pd.DataFrame(df)
         df["data"] = pd.to_datetime(df["data"])
 
-        st.subheader("Lista de Despesas")
+        # -----------------------
+        # APLICA O FILTRO AQUI
+        # -----------------------
+        df = df[(df["data"].dt.month == mes_filtro) & (df["data"].dt.year == ano_filtro)]
 
-        # Cabeçalho
-        header_cols = st.columns([2,2,1,1,1,2,1])
-        header_cols[0].write("**Código**")
-        header_cols[1].write("**Data**")
-        header_cols[2].write("**Filial**")
-        header_cols[3].write("**Valor**")
-        header_cols[4].write("**Pagamento**")
-        header_cols[5].write("**Funcionário**")
-        header_cols[6].write("**Ação**")
+        if df.empty:
+            st.info("Nenhuma despesa encontrada neste mês.")
+        else:
+            st.subheader("Lista de Despesas")
 
-        # Linhas com botão apagar
-        for index, row in df.sort_values("data", ascending=False).iterrows():
-            col1, col2, col3, col4, col5, col6, col7 = st.columns([2,2,1,1,1,2,1])
+            # Cabeçalhos
+            header_cols = st.columns([2,2,1,1,1,2,1])
+            header_cols[0].write("**Código**")
+            header_cols[1].write("**Data**")
+            header_cols[2].write("**Filial**")
+            header_cols[3].write("**Valor**")
+            header_cols[4].write("**Pagamento**")
+            header_cols[5].write("**Funcionário**")
+            header_cols[6].write("**Ação**")
 
-            col1.write(row['cod_pagamento'])
-            col2.write(row["data"].date())
-            col3.write(row["filial_id"])
-            col4.write(f"R$ {row['valor']:.2f}")
-            col5.write(row["meio_de_pagamento"])
-            col6.write(row["funcionario"])
+            # Linhas da tabela
+            for index, row in df.sort_values("data", ascending=False).iterrows():
+                col1, col2, col3, col4, col5, col6, col7 = st.columns([2,2,1,1,1,2,1])
 
-            if col7.button("Apagar", key=f"apagar_{row['cod_pagamento']}"):
-                try:
-                    supabase.table("despesas")\
-                            .delete()\
-                            .eq("cod_pagamento", row['cod_pagamento'])\
-                            .execute()
-                    st.success(f"Despesa {row['cod_pagamento']} apagada! Atualize a página.")
-                except Exception as e:
-                    st.error(f"Erro ao apagar: {e}")
+                col1.write(row['cod_pagamento'])
+                col2.write(row["data"].date())
+                col3.write(row["filial_id"])
+                col4.write(f"R$ {row['valor']:.2f}")
+                col5.write(row["meio_de_pagamento"])
+                col6.write(row["funcionario"])
+
+                if col7.button("Apagar", key=f"apagar_{row['cod_pagamento']}"):
+                    try:
+                        supabase.table("despesas")\
+                                .delete()\
+                                .eq("cod_pagamento", row['cod_pagamento'])\
+                                .execute()
+                        st.success(f"Despesa {row['cod_pagamento']} apagada! Atualize a página.")
+                    except Exception as e:
+                        st.error(f"Erro ao apagar: {e}")
 
     else:
         st.info("Nenhuma despesa registrada ainda.")
