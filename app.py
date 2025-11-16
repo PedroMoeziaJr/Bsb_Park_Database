@@ -26,7 +26,7 @@ contas = [
 ]
 
 # ---------------------------------------------------
-# FORMULÁRIO DE DESPESAS
+# FORMULÁRIO DE DESPESAS (REGISTRO)
 # ---------------------------------------------------
 with st.form("form_despesa"):
     filial = st.selectbox("Filial", filiais)
@@ -36,8 +36,8 @@ with st.form("form_despesa"):
     recorrencia = st.selectbox("Recorrência", recorrencias)
     conta = st.selectbox("Conta", contas)
 
-    # Escolher a data manualmente
-    data_escolhida = st.date_input("Data da Despesa", date.today())
+    # Data usada APENAS para registrar a despesa
+    data_registro = st.date_input("Data da Despesa", date.today())
 
     submitted = st.form_submit_button("Enviar")
 
@@ -54,7 +54,7 @@ with st.form("form_despesa"):
 
         nova_despesa = {
             "cod_pagamento": novo_cod,
-            "data": data_escolhida.isoformat(),
+            "data": data_registro.isoformat(),
             "filial_id": filial,
             "funcionario": funcionario,
             "valor": valor,
@@ -70,16 +70,20 @@ with st.form("form_despesa"):
             st.error(f"Erro ao registrar despesa: {e}")
 
 # ---------------------------------------------------
-# FILTRO AUTOMÁTICO PELO MÊS DA DATA ESCOLHIDA
+# VISUALIZAÇÃO + SELETOR PRÓPRIO DE MÊS
 # ---------------------------------------------------
-mes_filtro = data_escolhida.month
-ano_filtro = data_escolhida.year
-
 st.markdown("---")
-st.header(f"Despesas de {mes_filtro:02d}/{ano_filtro}")
+st.header("Visualização de Despesas")
+
+# NOVO → seletor de data exclusivo para FILTRAR despesas
+data_filtro = st.date_input("Filtrar por data (somente mês/ano será usado)", date.today())
+mes_filtro = data_filtro.month
+ano_filtro = data_filtro.year
+
+st.subheader(f"Despesas de {mes_filtro:02d}/{ano_filtro}")
 
 # ---------------------------------------------------
-# VISUALIZAÇÃO E EXCLUSÃO
+# BUSCA, FILTRA E MOSTRA
 # ---------------------------------------------------
 try:
     resposta = supabase.table("despesas").select("*").execute()
@@ -87,21 +91,16 @@ try:
 
     if df:
         import pandas as pd
-
         df = pd.DataFrame(df)
         df["data"] = pd.to_datetime(df["data"])
 
-        # -----------------------
-        # APLICA O FILTRO AQUI
-        # -----------------------
+        # Filtrando pelo mês/ano selecionados no novo seletor
         df = df[(df["data"].dt.month == mes_filtro) & (df["data"].dt.year == ano_filtro)]
 
         if df.empty:
             st.info("Nenhuma despesa encontrada neste mês.")
         else:
-            st.subheader("Lista de Despesas")
-
-            # Cabeçalhos
+            # Cabeçalho
             header_cols = st.columns([2,2,1,1,1,2,1])
             header_cols[0].write("**Código**")
             header_cols[1].write("**Data**")
@@ -111,7 +110,7 @@ try:
             header_cols[5].write("**Funcionário**")
             header_cols[6].write("**Ação**")
 
-            # Linhas da tabela
+            # Linhas com botão de apagar
             for index, row in df.sort_values("data", ascending=False).iterrows():
                 col1, col2, col3, col4, col5, col6, col7 = st.columns([2,2,1,1,1,2,1])
 
