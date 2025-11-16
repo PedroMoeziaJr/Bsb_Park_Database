@@ -1,6 +1,6 @@
 import streamlit as st
 from supabase import create_client, Client
-from datetime import datetime
+from datetime import datetime, date
 
 # Configurações do Supabase
 SUPABASE_URL = "https://clxuxrlqbkdadhkpzaly.supabase.co"
@@ -25,7 +25,9 @@ contas = [
     "Tributo", "Pessoal", "Contabil_Jurídica", "Outro"
 ]
 
-# Formulário
+# --------------------------
+# FORMULÁRIO DE DESPESAS
+# --------------------------
 with st.form("form_despesa"):
     filial = st.selectbox("Filial", filiais)
     funcionario = st.text_input("Funcionário")
@@ -33,6 +35,9 @@ with st.form("form_despesa"):
     meio_pagamento = st.selectbox("Meio de Pagamento", meios_pagamento)
     recorrencia = st.selectbox("Recorrência", recorrencias)
     conta = st.selectbox("Conta", contas)
+
+    # NOVO: escolher data manualmente
+    data_escolhida = st.date_input("Data da Despesa", date.today())
 
     submitted = st.form_submit_button("Enviar")
 
@@ -49,7 +54,7 @@ with st.form("form_despesa"):
 
         nova_despesa = {
             "cod_pagamento": novo_cod,
-            "data": datetime.today().date().isoformat(),
+            "data": data_escolhida.isoformat(),
             "filial_id": filial,
             "funcionario": funcionario,
             "valor": valor,
@@ -64,12 +69,12 @@ with st.form("form_despesa"):
         except Exception as e:
             st.error(f"Erro ao registrar despesa: {e}")
 
-
-
+# --------------------------
+# VISUALIZAÇÃO E EXCLUSÃO
+# --------------------------
 st.markdown("---")
 st.header("Visualização de Despesas")
 
-# Buscar todos os dados da tabela
 try:
     resposta = supabase.table("despesas").select("*").execute()
     df = resposta.data
@@ -77,33 +82,26 @@ try:
     if df:
         import pandas as pd
 
-        # Converter para DataFrame
         df = pd.DataFrame(df)
         df["data"] = pd.to_datetime(df["data"])
 
-        # Filtros
-        anos = sorted(df["data"].dt.year.unique(), reverse=True)
-        meses = sorted(df["data"].dt.month.unique())
+        st.dataframe(df.sort_values("data", ascending=False))
 
-        col1, col2 = st.columns(2)
-        with col1:
-            ano_selecionado = st.selectbox("Ano", anos)
-        with col2:
-            mes_selecionado = st.selectbox("Mês", meses)
+        st.subheader("Excluir uma despesa")
 
-        # Aplicar filtros
-        df_filtrado = df[
-            (df["data"].dt.year == ano_selecionado) &
-            (df["data"].dt.month == mes_selecionado)
-        ]
+        # Selecionar pelo código do pagamento
+        codigos = df["cod_pagamento"].tolist()
+        cod_selecionado = st.selectbox("Selecione o código da despesa para excluir", codigos)
 
-        st.dataframe(
-            df_filtrado.sort_values(by="data", ascending=False).reset_index(drop=True),
-            use_container_width=True
-        )
+        if st.button("Apagar despesa"):
+            try:
+                supabase.table("despesas").delete().eq("cod_pagamento", cod_selecionado).execute()
+                st.success("Despesa apagada com sucesso! Atualize a página.")
+            except Exception as e:
+                st.error(f"Erro ao tentar apagar: {e}")
 
     else:
         st.info("Nenhuma despesa registrada ainda.")
-except Exception as e:
-    st.error(f"Erro ao buscar dados: {e}")
 
+except Exception as e:
+    st.error(f"Erro ao buscar despesas: {e}")
