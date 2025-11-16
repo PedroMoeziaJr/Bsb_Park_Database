@@ -36,7 +36,7 @@ with st.form("form_despesa"):
     recorrencia = st.selectbox("Recorrência", recorrencias)
     conta = st.selectbox("Conta", contas)
 
-    # NOVO: escolher data manualmente
+    # Escolher a data manualmente
     data_escolhida = st.date_input("Data da Despesa", date.today())
 
     submitted = st.form_submit_button("Enviar")
@@ -64,7 +64,7 @@ with st.form("form_despesa"):
         }
 
         try:
-            resultado = supabase.table("despesas").insert(nova_despesa).execute()
+            supabase.table("despesas").insert(nova_despesa).execute()
             st.success("Despesa registrada com sucesso!")
         except Exception as e:
             st.error(f"Erro ao registrar despesa: {e}")
@@ -85,20 +85,38 @@ try:
         df = pd.DataFrame(df)
         df["data"] = pd.to_datetime(df["data"])
 
-        st.dataframe(df.sort_values("data", ascending=False))
+        st.subheader("Lista de Despesas")
 
-        st.subheader("Excluir uma despesa")
+        # Cabeçalho
+        header_cols = st.columns([2,2,1,1,1,2,1])
+        header_cols[0].write("**Código**")
+        header_cols[1].write("**Data**")
+        header_cols[2].write("**Filial**")
+        header_cols[3].write("**Valor**")
+        header_cols[4].write("**Pagamento**")
+        header_cols[5].write("**Funcionário**")
+        header_cols[6].write("**Ação**")
 
-        # Selecionar pelo código do pagamento
-        codigos = df["cod_pagamento"].tolist()
-        cod_selecionado = st.selectbox("Selecione o código da despesa para excluir", codigos)
+        # Linhas com botão apagar
+        for index, row in df.sort_values("data", ascending=False).iterrows():
+            col1, col2, col3, col4, col5, col6, col7 = st.columns([2,2,1,1,1,2,1])
 
-        if st.button("Apagar despesa"):
-            try:
-                supabase.table("despesas").delete().eq("cod_pagamento", cod_selecionado).execute()
-                st.success("Despesa apagada com sucesso! Atualize a página.")
-            except Exception as e:
-                st.error(f"Erro ao tentar apagar: {e}")
+            col1.write(row['cod_pagamento'])
+            col2.write(row["data"].date())
+            col3.write(row["filial_id"])
+            col4.write(f"R$ {row['valor']:.2f}")
+            col5.write(row["meio_de_pagamento"])
+            col6.write(row["funcionario"])
+
+            if col7.button("Apagar", key=f"apagar_{row['cod_pagamento']}"):
+                try:
+                    supabase.table("despesas")\
+                            .delete()\
+                            .eq("cod_pagamento", row['cod_pagamento'])\
+                            .execute()
+                    st.success(f"Despesa {row['cod_pagamento']} apagada! Atualize a página.")
+                except Exception as e:
+                    st.error(f"Erro ao apagar: {e}")
 
     else:
         st.info("Nenhuma despesa registrada ainda.")
