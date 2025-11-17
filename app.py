@@ -28,7 +28,7 @@ contas = [
 ]
 
 # --------------------------
-# FORMULÁRIO DE DESPESAS (REGISTRO)
+# FORMULÁRIO DE DESPESAS
 # --------------------------
 with st.form("form_despesa"):
     c1, c2 = st.columns(2)
@@ -41,7 +41,6 @@ with st.form("form_despesa"):
         meio_pagamento = st.selectbox("Meio de Pagamento", meios_pagamento)
         recorrencia = st.selectbox("Recorrência", recorrencias)
 
-    # Data usada APENAS para registrar a despesa (dia é permitido aqui)
     data_registro = st.date_input("Data da Despesa (registro)", date.today())
 
     submitted = st.form_submit_button("Enviar")
@@ -52,16 +51,20 @@ with st.form("form_despesa"):
             dados = supabase.table("despesas")\
                 .select("cod_pagamento")\
                 .order("cod_pagamento", desc=True)\
-                .limit(1)\
-                .execute()
-            ultimo_cod = dados.data[0]["cod_pagamento"] if dados.data else 100
+                .limit(1).execute()
+
+            try:
+                ultimo_cod = int(dados.data[0]["cod_pagamento"])
+            except:
+                ultimo_cod = 100
+
         except Exception:
             ultimo_cod = 100
 
         novo_cod = ultimo_cod + 1
 
         nova_despesa = {
-            "cod_pagamento": novo_cod,
+            "cod_pagamento": str(novo_cod),  # <-- garantir compatibilidade
             "data": data_registro.isoformat(),
             "filial_id": filial,
             "funcionario": funcionario,
@@ -80,7 +83,7 @@ with st.form("form_despesa"):
 st.markdown("---")
 
 # --------------------------
-# VISUALIZAÇÃO: buscar todos os registros primeiro
+# VISUALIZAÇÃO (BUSCA DADOS)
 # --------------------------
 st.header("Visualização de Despesas")
 
@@ -91,18 +94,11 @@ except Exception as e:
     st.error(f"Erro ao buscar despesas: {e}")
     registros = []
 
-# Converte para DataFrame e prepara colunas de data
+# DataFrame
 if registros:
     df_all = pd.DataFrame(registros)
-    # tenta converter a coluna 'data' para datetime robustamente
     df_all["data"] = pd.to_datetime(df_all["data"], errors="coerce")
-    # remove linhas com data inválida (se houver)
-    df_all = df_all.dropna(subset=["data"]).copy()
-    # tira timezone se houver
-    try:
-        df_all["data"] = df_all["data"].dt.tz_localize(None)
-    except Exception:
-        pass
+    df_all = df_all.dropna(subset=["data"])
 else:
     df_all = pd.DataFrame(columns=[
         "cod_pagamento", "data", "filial_id", "funcionario",
@@ -110,48 +106,47 @@ else:
     ])
 
 # --------------------------
-# Seletor de MÊS/ANO para FILTRAR (VISUALIZAÇÃO)
+# FILTRO MÊS/ANO
 # --------------------------
 col_filter_1, col_filter_2, col_filter_3 = st.columns([2,2,1])
 with col_filter_1:
-    # mês: mostra nomes para o usuário, mas guarda números internamente
     meses = [
-        "01 - Janeiro","02 - Fevereiro","03 - Março","04 - Abril","05 - Maio","06 - Junho",
-        "07 - Julho","08 - Agosto","09 - Setembro","10 - Outubro","11 - Novembro","12 - Dezembro"
+        "01 - Janeiro", "02 - Fevereiro", "03 - Março", "04 - Abril",
+        "05 - Maio", "06 - Junho", "07 - Julho", "08 - Agosto",
+        "09 - Setembro", "10 - Outubro", "11 - Novembro", "12 - Dezembro"
     ]
-    mes_idx = st.selectbox("Mês (filtrar)", options=list(range(1,13)), format_func=lambda x: meses[x-1], index=date.today().month-1)
+    mes_idx = st.selectbox("Mês (filtrar)", options=list(range(1,13)),
+                           format_func=lambda x: meses[x-1],
+                           index=date.today().month-1)
 
 with col_filter_2:
-    # ano: se houver dados, usar anos existentes; senão, usar uma faixa em torno do ano atual
     if not df_all.empty:
         anos_disponiveis = sorted(df_all["data"].dt.year.unique().tolist(), reverse=True)
-        ano_idx = st.selectbox("Ano (filtrar)", options=anos_disponiveis, index=0)
     else:
-        ano_idx = st.selectbox("Ano (filtrar)", options=[date.today().year, date.today().year-1, date.today().year+1], index=0)
+        anos_disponiveis = [date.today().year]
+
+    ano_idx = st.selectbox("Ano (filtrar)", anos_disponiveis)
 
 with col_filter_3:
-    # botão para aplicar (opcional; filtro aplica automaticamente, mas deixo botão para controle)
-    st.write("")  # filler
-    if st.button("Atualizar visualização"):
+    st.write("")
+    if st.button("Atualizar"):
         st.experimental_rerun()
 
-# --------------------------
-# Aplica filtro mês/ano
-# --------------------------
-mes_filtro = int(mes_idx)
-ano_filtro = int(ano_idx)
+# Filtra
+df_filtrado = df_all[
+    (df_all["data"].dt.month == mes_idx) &
+    (df_all["data"].dt.year == ano_idx)
+]
 
-df_filtrado = df_all[(df_all["data"].dt.month == mes_filtro) & (df_all["data"].dt.year == ano_filtro)].copy()
-
-st.subheader(f"Despesas de {mes_filtro:02d}/{ano_filtro} — {len(df_filtrado)} registros")
+st.subheader(f"Despesas {mes_idx:02d}/{ano_idx} — {len(df_filtrado)} registros")
 
 # --------------------------
-# Exibe tabela com botão apagar em cada linha
+# TABELA + APAGAR
 # --------------------------
 if df_filtrado.empty:
-    st.info("Nenhuma despesa encontrada neste mês/ano.")
+    st.info("Nenhuma despesa encontrada.")
 else:
-    # Cabeçalho
+
     header_cols = st.columns([1.2, 1.8, 1.6, 1.2, 1.4, 2.8, 1.0])
     header_cols[0].write("**Código**")
     header_cols[1].write("**Data**")
@@ -161,32 +156,35 @@ else:
     header_cols[5].write("**Funcionário**")
     header_cols[6].write("**Ação**")
 
-    # Ordena por data decrescente e exibe
     for _, row in df_filtrado.sort_values("data", ascending=False).iterrows():
+
+        cod_pg = str(row["cod_pagamento"])  # <-- agora garantido como string
+
         col1, col2, col3, col4, col5, col6, col7 = st.columns([1.2, 1.8, 1.6, 1.2, 1.4, 2.8, 1.0])
 
-        col1.write(int(row["cod_pagamento"]))
+        col1.write(cod_pg)
         col2.write(row["data"].date().isoformat())
         col3.write(row.get("filial_id", ""))
         col4.write(f"R$ {float(row.get('valor', 0)):,.2f}")
         col5.write(row.get("meio_de_pagamento", ""))
         col6.write(row.get("funcionario", ""))
 
-        # botão apagar na mesma linha — usa cod_pagamento como key
-        key_btn = f"apagar_{int(row['cod_pagamento'])}"
-        if col7.button("Apagar", key=key_btn):
-            # confirmação simples (modal não existe nativo), usamos st.confirm-like via st.radio opcional
-            if st.checkbox(f"Confirmar exclusão de {int(row['cod_pagamento'])}?", key=f"confirm_{key_btn}"):
-                try:
-                    supabase.table("despesas").delete().eq("cod_pagamento", int(row["cod_pagamento"])).execute()
-                    st.success(f"Despesa {int(row['cod_pagamento'])} apagada.")
-                    st.experimental_rerun()  # recarrega a página para atualizar lista
-                except Exception as e:
-                    st.error(f"Erro ao apagar: {e}")
+        if col7.button("Apagar", key=f"del_{cod_pg}"):
 
-# --------------------------
-# Opcional: mostra resumo do mês (total)
-# --------------------------
+            try:
+                resposta = supabase.table("despesas").delete().eq("cod_pagamento", cod_pg).execute()
+
+                st.write("DEBUG DELETE:", resposta)
+
+                st.success(f"Despesa {cod_pg} apagada.")
+                st.experimental_rerun()
+
+            except Exception as e:
+                st.error(f"Erro ao apagar: {e}")
+
+
+# RESUMO TOTAL DO MÊS
 if not df_filtrado.empty:
     total_mes = df_filtrado["valor"].astype(float).sum()
-    st.metric(label="Total do mês (R$)", value=f"R$ {total_mes:,.2f}")
+    st.metric("Total do mês (R$)", f"R$ {total_mes:,.2f}")
+
