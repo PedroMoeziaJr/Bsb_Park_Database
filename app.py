@@ -1,190 +1,113 @@
 import streamlit as st
-from supabase import create_client, Client
-from datetime import date, datetime
 import pandas as pd
+import requests
+from datetime import datetime
 
-# Configurações do Supabase
-SUPABASE_URL = "https://clxuxrlqbkdadhkpzaly.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseHV4cmxxYmtkYWRoa3B6YWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5Nzg3NjgsImV4cCI6MjA2NDU1NDc2OH0.aMgo3gBA9Rb_H-Oex2nQ8SccmSfMNKv8TwyAixan2Wk"
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+API_URL = "http://localhost:8000"  # ajuste conforme sua API
 
-st.set_page_config(page_title="Registro de Despesas", layout="wide")
-st.title("Registro de Despesas")
+st.set_page_config(page_title="Controle de Despesas", layout="wide")
 
-# Listas suspensas
-filiais = [
-    "01_SCS", "02_Taguatinga", "03_Ed_Prime", "04_504",
-    "05_Rio_de_Janeiro", "06_Imperatriz_MA", "07_Itumbiara_GO",
-    "08_Ituiutaba_MG", "09_Matriz", "10_PF_Ped_", "11_PF_CEL_"
-]
+# ------------------------------------------------------------
+# REGISTRAR DESPESA
+# ------------------------------------------------------------
+def registrar_despesa():
+    st.header("Registrar Despesa")
 
-meios_pagamento = ['Pix', 'Internet', 'Dda', 'Boleto', 'Transferencia']
-recorrencias = ['Extra', 'Fixa']
+    funcionario = st.text_input("Nome do Funcionário")
+    filial = st.text_input("Filial ID (ex: 01_SCS)")
+    conta = st.selectbox("Conta", ["Operacional", "Administrativo", "Outros"])
+    meio = st.selectbox("Meio de Pagamento", ["Dinheiro", "Pix", "Cartão", "Transferência"])
+    recorrencia = st.selectbox("Recorrência", ["Fixa", "Extra"])
+    valor = st.number_input("Valor da Despesa", min_value=0.0, step=0.01)
 
-contas = [
-    "Operacional", "Vale Refeição", "Vale Transporte", "Salário", "Bancária",
-    "Energia", "Recursos Humanos", "Internet_Telefone", "Condomínio",
-    "Tributo", "Pessoal", "Contabil_Jurídica", "Outro"
-]
+    # Seleção de ano e mês
+    ano = st.number_input("Ano da Despesa", min_value=2020, max_value=2100, step=1, value=datetime.now().year)
+    mes = st.number_input("Mês da Despesa", min_value=1, max_value=12, step=1, value=datetime.now().month)
+    data_str = f"{ano}-{mes:02d}-01"
 
-# --------------------------
-# FORMULÁRIO DE DESPESAS
-# --------------------------
-with st.form("form_despesa"):
-    c1, c2 = st.columns(2)
-    with c1:
-        filial = st.selectbox("Filial", filiais)
-        funcionario = st.text_input("Funcionário")
-        conta = st.selectbox("Conta", contas)
-    with c2:
-        valor = st.number_input("Valor (R$)", min_value=0.0, format="%.2f")
-        meio_pagamento = st.selectbox("Meio de Pagamento", meios_pagamento)
-        recorrencia = st.selectbox("Recorrência", recorrencias)
-
-    data_registro = st.date_input("Data da Despesa (registro)", date.today())
-
-    submitted = st.form_submit_button("Enviar")
-
-    if submitted:
-        # Obter último cod_pagamento
-        try:
-            dados = supabase.table("despesas")\
-                .select("cod_pagamento")\
-                .order("cod_pagamento", desc=True)\
-                .limit(1).execute()
-
-            try:
-                ultimo_cod = int(dados.data[0]["cod_pagamento"])
-            except:
-                ultimo_cod = 100
-
-        except Exception:
-            ultimo_cod = 100
-
-        novo_cod = ultimo_cod + 1
-
-        nova_despesa = {
-            "cod_pagamento": str(novo_cod),  # <-- garantir compatibilidade
-            "data": data_registro.isoformat(),
-            "filial_id": filial,
+    if st.button("Registrar Despesa"):
+        payload = {
             "funcionario": funcionario,
-            "valor": float(valor),
-            "meio_de_pagamento": meio_pagamento,
+            "filial_id": filial,
+            "conta": conta,
+            "meio_de_pagamento": meio,
             "recorrencia": recorrencia,
-            "conta": conta
+            "valor": valor,
+            "data": data_str
         }
 
         try:
-            supabase.table("despesas").insert(nova_despesa).execute()
-            st.success("Despesa registrada com sucesso!")
+            r = requests.post(f"{API_URL}/add", json=payload)
+            if r.status_code == 200:
+                st.success("Despesa registrada com sucesso!")
+                st.rerun()
+            else:
+                st.error("Erro ao registrar despesa.")
         except Exception as e:
-            st.error(f"Erro ao registrar despesa: {e}")
+            st.error(f"Erro ao conectar com API: {e}")
 
-st.markdown("---")
+# ------------------------------------------------------------
+# VISUALIZAR DESPESAS
+# ------------------------------------------------------------
+def visualizar_despesas():
+    st.header("Visualizar Despesas")
 
-# --------------------------
-# VISUALIZAÇÃO (BUSCA DADOS)
-# --------------------------
-st.header("Visualização de Despesas")
+    # Filtro mês/ano independente
+    ano_filtro = st.number_input("Ano para buscar", min_value=2020, max_value=2100, step=1, value=datetime.now().year)
+    mes_filtro = st.number_input("Mês para buscar", min_value=1, max_value=12, step=1, value=datetime.now().month)
 
-try:
-    resposta = supabase.table("despesas").select("*").execute()
-    registros = resposta.data if resposta.data else []
-except Exception as e:
-    st.error(f"Erro ao buscar despesas: {e}")
-    registros = []
+    filtro_data = f"{ano_filtro}-{mes_filtro:02d}"
 
-# DataFrame
-if registros:
-    df_all = pd.DataFrame(registros)
-    df_all["data"] = pd.to_datetime(df_all["data"], errors="coerce")
-    df_all = df_all.dropna(subset=["data"])
-else:
-    df_all = pd.DataFrame(columns=[
-        "cod_pagamento", "data", "filial_id", "funcionario",
-        "valor", "meio_de_pagamento", "recorrencia", "conta"
-    ])
+    try:
+        r = requests.get(f"{API_URL}/all")
+        if r.status_code != 200:
+            st.error("Erro ao buscar despesas.")
+            return
 
-# --------------------------
-# FILTRO MÊS/ANO
-# --------------------------
-col_filter_1, col_filter_2, col_filter_3 = st.columns([2,2,1])
-with col_filter_1:
-    meses = [
-        "01 - Janeiro", "02 - Fevereiro", "03 - Março", "04 - Abril",
-        "05 - Maio", "06 - Junho", "07 - Julho", "08 - Agosto",
-        "09 - Setembro", "10 - Outubro", "11 - Novembro", "12 - Dezembro"
-    ]
-    mes_idx = st.selectbox("Mês (filtrar)", options=list(range(1,13)),
-                           format_func=lambda x: meses[x-1],
-                           index=date.today().month-1)
+        data = r.json()
+        df = pd.DataFrame(data)
 
-with col_filter_2:
-    if not df_all.empty:
-        anos_disponiveis = sorted(df_all["data"].dt.year.unique().tolist(), reverse=True)
-    else:
-        anos_disponiveis = [date.today().year]
+        # filtrar pelo mês/ano
+        df['data'] = pd.to_datetime(df['data'])
+        df_filtrado = df[df['data'].dt.strftime('%Y-%m') == filtro_data]
 
-    ano_idx = st.selectbox("Ano (filtrar)", anos_disponiveis)
+        st.subheader(f"Despesas de {mes_filtro:02d}/{ano_filtro}")
+        st.dataframe(df_filtrado, use_container_width=True)
 
-with col_filter_3:
-    st.write("")
-    if st.button("Atualizar"):
-        st.experimental_rerun()
+    except Exception as e:
+        st.error(f"Erro: {e}")
 
-# Filtra
-df_filtrado = df_all[
-    (df_all["data"].dt.month == mes_idx) &
-    (df_all["data"].dt.year == ano_idx)
-]
+# ------------------------------------------------------------
+# APAGAR DESPESA
+# ------------------------------------------------------------
+def apagar_despesa():
+    st.header("Apagar Despesa")
 
-st.subheader(f"Despesas {mes_idx:02d}/{ano_idx} — {len(df_filtrado)} registros")
+    cod = st.number_input("Código da despesa a apagar", min_value=1, step=1)
 
-# --------------------------
-# TABELA + APAGAR
-# --------------------------
-if df_filtrado.empty:
-    st.info("Nenhuma despesa encontrada.")
-else:
+    if st.button("Apagar"):
+        try:
+            r = requests.delete(f"{API_URL}/delete/{cod}")
+            if r.status_code == 200:
+                st.success(f"Despesa {cod} apagada com sucesso.")
+                st.rerun()
+            else:
+                st.error("Erro ao apagar despesa.")
+        except Exception as e:
+            st.error(f"Erro ao conectar com API: {e}")
 
-    header_cols = st.columns([1.2, 1.8, 1.6, 1.2, 1.4, 2.8, 1.0])
-    header_cols[0].write("**Código**")
-    header_cols[1].write("**Data**")
-    header_cols[2].write("**Filial**")
-    header_cols[3].write("**Valor**")
-    header_cols[4].write("**Pagamento**")
-    header_cols[5].write("**Funcionário**")
-    header_cols[6].write("**Ação**")
+# ------------------------------------------------------------
+# MENU
+# ------------------------------------------------------------
+menu = st.sidebar.radio(
+    "Menu", ["Registrar", "Visualizar", "Apagar"]
+)
 
-    for _, row in df_filtrado.sort_values("data", ascending=False).iterrows():
+if menu == "Registrar":
+    registrar_despesa()
+elif menu == "Visualizar":
+    visualizar_despesas()
+elif menu == "Apagar":
+    apagar_despesa()
 
-        cod_pg = str(row["cod_pagamento"])  # <-- agora garantido como string
-
-        col1, col2, col3, col4, col5, col6, col7 = st.columns([1.2, 1.8, 1.6, 1.2, 1.4, 2.8, 1.0])
-
-        col1.write(cod_pg)
-        col2.write(row["data"].date().isoformat())
-        col3.write(row.get("filial_id", ""))
-        col4.write(f"R$ {float(row.get('valor', 0)):,.2f}")
-        col5.write(row.get("meio_de_pagamento", ""))
-        col6.write(row.get("funcionario", ""))
-
-        if col7.button("Apagar", key=f"del_{cod_pg}"):
-
-            try:
-                resposta = supabase.table("despesas").delete().eq("cod_pagamento", cod_pg).execute()
-
-                st.write("DEBUG DELETE:", resposta)
-
-                st.success(f"Despesa {cod_pg} apagada.")
-                st.experimental_rerun()
-
-            except Exception as e:
-                st.error(f"Erro ao apagar: {e}")
-
-
-# RESUMO TOTAL DO MÊS
-if not df_filtrado.empty:
-    total_mes = df_filtrado["valor"].astype(float).sum()
-    st.metric("Total do mês (R$)", f"R$ {total_mes:,.2f}")
 
