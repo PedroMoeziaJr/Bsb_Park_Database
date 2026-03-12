@@ -44,14 +44,16 @@ def pagina_cadastro():
     # ============================
     # CAMPOS DE TEXTO
     # ============================
+    cod_cliente = st.text_input("Código do Cliente")
     nome = st.text_input("Nome do cliente")
-    telefone = st.text_input("Telefone")
+    telefone = st.text_input("Telefone (opcional)")
 
     # ============================
     # BOTÃO DE CADASTRO
     # ============================
     if st.button("Cadastrar Cliente"):
         dados = {
+            "cod_cliente": cod_cliente,
             "nome": nome,
             "telefone": telefone,
             "id_filial": filial_escolhida,
