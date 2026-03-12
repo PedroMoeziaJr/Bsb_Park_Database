@@ -9,9 +9,9 @@ from clientes.crud_clientes import (
 
 
 def pagina_consulta():
-    # Refresh simples
-    if st.session_state.get("refresh"):
-        st.session_state["refresh"] = False
+
+    if st.session_state.get("refresh_consulta"):
+        st.session_state["refresh_consulta"] = False
         st.rerun()
 
     st.title("Consulta e Edição de Clientes")
@@ -20,10 +20,7 @@ def pagina_consulta():
     filiais = listar_filiais().data
     lista_filiais = [f["id_filial"] for f in filiais]
 
-    filial_escolhida = st.selectbox(
-        "Selecione a filial:",
-        lista_filiais
-    )
+    filial_escolhida = st.selectbox("Selecione a filial:", lista_filiais)
 
     st.subheader("Buscar cliente pelo nome")
     nome_busca = st.text_input("Digite parte do nome do cliente")
@@ -39,13 +36,10 @@ def pagina_consulta():
         return
 
     st.subheader("Resultados")
-
-    # Tabela completa
     st.dataframe(clientes, use_container_width=True)
 
     st.write("### Ações")
 
-    # Lista com botões
     for cliente in clientes:
         col1, col2, col3 = st.columns([4, 1, 1])
 
@@ -60,7 +54,7 @@ def pagina_consulta():
             if st.button("Excluir", key=f"del_{cliente['cod_cliente']}"):
                 deletar_cliente(cliente["cod_cliente"])
                 st.success("Cliente excluído com sucesso!")
-                st.session_state["refresh"] = True
+                st.session_state["refresh_consulta"] = True
 
     # Formulário de edição
     if "cliente_editando" in st.session_state:
@@ -75,7 +69,6 @@ def pagina_consulta():
             "Forma de pagamento",
             formas_pagamento,
             index=formas_pagamento.index(cliente["forma_de_pagamento"])
-            if cliente["forma_de_pagamento"] in formas_pagamento else 0
         )
 
         tipos_cliente = ["Mensalista", "Tickets_Convenio", "Rotativo"]
@@ -83,7 +76,6 @@ def pagina_consulta():
             "Tipo de cliente",
             tipos_cliente,
             index=tipos_cliente.index(cliente["tipo_de_cliente"])
-            if cliente["tipo_de_cliente"] in tipos_cliente else 0
         )
 
         status_opcoes = ["Ativo", "Desativado"]
@@ -91,7 +83,6 @@ def pagina_consulta():
             "Status",
             status_opcoes,
             index=status_opcoes.index(cliente["status"])
-            if cliente["status"] in status_opcoes else 0
         )
 
         if st.button("Salvar alterações"):
@@ -106,4 +97,4 @@ def pagina_consulta():
             st.success("Cliente atualizado com sucesso!")
 
             del st.session_state["cliente_editando"]
-            st.session_state["refresh"] = True
+            st.session_state["refresh_consulta"] = True
