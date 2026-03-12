@@ -51,13 +51,14 @@ def pagina_cadastro():
     # BOTÃO DE CADASTRO
     # ============================
     if st.button("Cadastrar Cliente"):
-    dados = {
-        "cod_cliente": cod_cliente,
-        "nome_cliente": nome_cliente,
-        "id_filial": filial_escolhida
-    }
+        dados = {
+            "cod_cliente": cod_cliente,
+            "nome_cliente": nome_cliente,
+            "id_filial": filial_escolhida
+        }
 
     st.write("DEBUG:", dados)
 
     criar_cliente(dados)
     st.success("Cliente cadastrado com sucesso!")
+
