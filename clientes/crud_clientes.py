@@ -48,4 +48,10 @@ def deletar_cliente(cod_cliente: str):
         .delete()
         .eq("cod_cliente", cod_cliente)
         .execute()
+
     )
+def listar_filiais():
+    return supabase.table("filiais").select("*").execute()
+
+def listar_clientes_por_filial(id_filial):
+    return supabase.table(TABELA).select("*").eq("id_filiais", id_filial).execute()
