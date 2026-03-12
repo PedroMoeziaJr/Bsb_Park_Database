@@ -45,3 +45,12 @@ def atualizar_cliente(id_cliente, novos_dados):
 
 def deletar_cliente(id_cliente):
     return supabase.table(TABELA).delete().eq("cod_cliente", id_cliente).execute()
+
+def buscar_cliente_por_nome(nome):
+    return (
+        supabase.table("clientes")
+        .select("*")
+        .ilike("nome_cliente", f"%{nome}%")
+        .execute()
+    )
+
