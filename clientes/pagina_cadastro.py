@@ -4,7 +4,6 @@ from clientes.crud_clientes import criar_cliente, listar_filiais
 
 def pagina_cadastro():
 
-    # Refresh seguro
     if st.session_state.get("refresh_cadastro"):
         st.session_state["refresh_cadastro"] = False
         st.rerun()
