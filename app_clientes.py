@@ -17,6 +17,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if "refresh" not in st.session_state:
-        st.session_state["refresh"] = False
     main()
