@@ -1,8 +1,8 @@
 from supabase import create_client, Client
 
 # Ajuste essas variáveis com os dados do seu projeto
-SUPABASE_URL = https://clxuxrlqbkdadhkpzaly.supabase.co
-SUPABASE_KEY = sb_publishable_KO9rqbzyLhu6K7AmIvDeiA_8PdBvoBQ
+SUPABASE_URL = "https://clxuxrlqbkdadhkpzaly.supabase.co"
+SUPABASE_KEY = "sb_publishable_KO9rqbzyLhu6K7AmIvDeiA_8PdBvoBQ"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -54,4 +54,5 @@ def deletar_cliente(cod_cliente: str):
         .eq("cod_cliente", cod_cliente)
         .execute()
     )
+
 
