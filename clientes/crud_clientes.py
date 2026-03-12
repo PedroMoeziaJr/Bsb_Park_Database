@@ -54,4 +54,5 @@ def listar_filiais():
     return supabase.table("filiais").select("*").execute()
 
 def listar_clientes_por_filial(id_filial):
-    return supabase.table(TABELA).select("*").eq("id_filiais", id_filial).execute()
+    return supabase.table(TABELA).select("*").eq("id_filial", id_filial).execute()
+
