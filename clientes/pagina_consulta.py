@@ -1,16 +1,33 @@
 import streamlit as st
-from clientes.crud_clientes import listar_clientes, buscar_cliente, atualizar_cliente, deletar_cliente
+from clientes.crud_clientes import listar_filiais, listar_clientes_por_filial
 
 def pagina_consulta():
     st.title("Consulta e Edição de Clientes")
 
-    clientes = listar_clientes().data
+    # Buscar filiais
+    filiais = listar_filiais().data
 
-    if not clientes:
-        st.info("Nenhum cliente cadastrado.")
+    if not filiais:
+        st.warning("Nenhuma filial encontrada no banco de dados.")
         return
 
-    st.subheader("Lista de Clientes")
+    # Criar selectbox com nomes das filiais
+    nomes_filiais = {f["filial"]: f["id"] for f in filiais}
+
+    filial_escolhida = st.selectbox(
+        "Selecione a filial:",
+        list(nomes_filiais.keys())
+    )
+
+    id_filial = nomes_filiais[filial_escolhida]
+
+    # Buscar clientes da filial selecionada
+    clientes = listar_clientes_por_filial(id_filial).data
+
+    if not clientes:
+        st.info("Nenhum cliente encontrado para esta filial.")
+        return
+
     st.dataframe(clientes)
 
     st.subheader("Buscar Cliente")
@@ -55,4 +72,5 @@ def pagina_consulta():
                 deletar_cliente(cod)
                 st.error("Cliente excluído!")
         else:
+
             st.warning("Cliente não encontrado.")
