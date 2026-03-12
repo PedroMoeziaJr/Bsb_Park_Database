@@ -2,7 +2,7 @@ from supabase import create_client, Client
 
 # Ajuste essas variáveis com os dados do seu projeto
 SUPABASE_URL = "https://clxuxrlqbkdadhkpzaly.supabase.co"
-SUPABASE_KEY = "sb_publishable_KO9rqbzyLhu6K7AmIvDeiA_8PdBvoBQ"  # NÃO USE publishable
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNseHV4cmxxYmtkYWRoa3B6YWx5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg5Nzg3NjgsImV4cCI6MjA2NDU1NDc2OH0.aMgo3gBA9Rb_H-Oex2nQ8SccmSfMNKv8TwyAixan2Wk"  # NÃO USE publishable
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -54,4 +54,5 @@ def deletar_cliente(cod_cliente: str):
         .eq("cod_cliente", cod_cliente)
         .execute()
     )
+
 
