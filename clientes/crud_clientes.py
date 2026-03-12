@@ -54,3 +54,10 @@ def buscar_cliente_por_nome(nome):
         .execute()
     )
 
+def atualizar_cliente(cod_cliente, dados):
+    return (
+        supabase.table("clientes")
+        .update(dados)
+        .eq("cod_cliente", cod_cliente)
+        .execute()
+    )
