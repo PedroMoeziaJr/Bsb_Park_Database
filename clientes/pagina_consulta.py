@@ -11,18 +11,16 @@ def pagina_consulta():
         st.warning("Nenhuma filial encontrada no banco de dados.")
         return
 
-    # Criar selectbox com nomes das filiais
-    nomes_filiais = {f["filial"]: f["id"] for f in filiais}
+    # Criar selectbox usando a coluna id_filial
+    lista_filiais = [f["id_filial"] for f in filiais]
 
     filial_escolhida = st.selectbox(
         "Selecione a filial:",
-        list(nomes_filiais.keys())
+        lista_filiais
     )
 
-    id_filial = nomes_filiais[filial_escolhida]
-
     # Buscar clientes da filial selecionada
-    clientes = listar_clientes_por_filial(id_filial).data
+    clientes = listar_clientes_por_filial(filial_escolhida).data
 
     if not clientes:
         st.info("Nenhum cliente encontrado para esta filial.")
@@ -74,3 +72,4 @@ def pagina_consulta():
         else:
 
             st.warning("Cliente não encontrado.")
+
