@@ -1,63 +1,56 @@
 from supabase import create_client, Client
-import os
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# Ajuste essas variáveis com os dados do seu projeto
+SUPABASE_URL = "SUA_URL_AQUI"
+SUPABASE_KEY = "SUA_KEY_AQUI"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-TABELA = "clientes"
+TABELA_CLIENTES = "clientes"
+TABELA_FILIAIS = "filiais"
 
-# ============================
-# LISTAR FILIAIS
-# ============================
 
 def listar_filiais():
-    return supabase.table("filiais").select("*").execute()
+    return supabase.table(TABELA_FILIAIS).select("*").execute()
 
-# ============================
-# LISTAR CLIENTES
-# ============================
 
-def listar_clientes():
-    return supabase.table(TABELA).select("*").execute()
-
-def listar_clientes_por_filial(id_filial):
-    return supabase.table(TABELA).select("*").eq("id_filial", id_filial).execute()
-
-# ============================
-# CRIAR CLIENTE
-# ============================
-
-def criar_cliente(dados):
-    return supabase.table(TABELA).insert(dados).execute()
-
-# ============================
-# ATUALIZAR CLIENTE
-# ============================
-
-def atualizar_cliente(id_cliente, novos_dados):
-    return supabase.table(TABELA).update(novos_dados).eq("cod_cliente", id_cliente).execute()
-
-# ============================
-# DELETAR CLIENTE
-# ============================
-
-def deletar_cliente(id_cliente):
-    return supabase.table(TABELA).delete().eq("cod_cliente", id_cliente).execute()
-
-def buscar_cliente_por_nome(nome):
+def listar_clientes_por_filial(id_filial: str):
     return (
-        supabase.table("clientes")
+        supabase.table(TABELA_CLIENTES)
         .select("*")
-        .ilike("nome_cliente", f"%{nome}%")
+        .eq("id_filial", id_filial)
+        .order("cod_cliente")
         .execute()
     )
 
-def atualizar_cliente(cod_cliente, dados):
+
+def criar_cliente(dados: dict):
+    return supabase.table(TABELA_CLIENTES).insert(dados).execute()
+
+
+def buscar_cliente_por_nome(nome: str):
     return (
-        supabase.table("clientes")
+        supabase.table(TABELA_CLIENTES)
+        .select("*")
+        .ilike("nome_cliente", f"%{nome}%")
+        .order("cod_cliente")
+        .execute()
+    )
+
+
+def atualizar_cliente(cod_cliente: str, dados: dict):
+    return (
+        supabase.table(TABELA_CLIENTES)
         .update(dados)
+        .eq("cod_cliente", cod_cliente)
+        .execute()
+    )
+
+
+def deletar_cliente(cod_cliente: str):
+    return (
+        supabase.table(TABELA_CLIENTES)
+        .delete()
         .eq("cod_cliente", cod_cliente)
         .execute()
     )
