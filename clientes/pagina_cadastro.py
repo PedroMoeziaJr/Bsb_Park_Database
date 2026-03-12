@@ -45,8 +45,7 @@ def pagina_cadastro():
     # CAMPOS DE TEXTO
     # ============================
     cod_cliente = st.text_input("Código do Cliente")
-    nome = st.text_input("Nome do cliente")
-    telefone = st.text_input("Telefone (opcional)")
+    nome_cliente = st.text_input("Nome do Cliente")
 
     # ============================
     # BOTÃO DE CADASTRO
@@ -54,13 +53,15 @@ def pagina_cadastro():
     if st.button("Cadastrar Cliente"):
         dados = {
             "cod_cliente": cod_cliente,
-            "nome": nome,
-            "telefone": telefone,
+            "nome_cliente": nome_cliente,
             "id_filial": filial_escolhida,
-            "forma_pagamento": forma_pagamento,
-            "tipo_cliente": tipo_cliente,
+            "forma_de_pagamento": forma_pagamento,
+            "tipo_de_cliente": tipo_cliente,
             "qntd_entradas": qntd_entradas,
-            "operador": operador
+            "operador": operador,
+            "status": "Ativo",          # opcional, mas recomendado
+            "boleto": "",               # vazio por padrão
+            "fundo_de_caixa": 0         # valor padrão
         }
 
         criar_cliente(dados)
