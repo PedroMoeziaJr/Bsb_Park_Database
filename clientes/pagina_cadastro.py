@@ -5,7 +5,7 @@ def pagina_cadastro():
     st.title("Cadastro de Clientes")
 
     # ============================
-    # FILIAIS
+    # LISTAR FILIAIS
     # ============================
     filiais = listar_filiais().data
     lista_filiais = [f["id_filial"] for f in filiais]
@@ -57,13 +57,13 @@ def pagina_cadastro():
             "id_filial": filial_escolhida,
             "forma_de_pagamento": forma_pagamento,
             "tipo_de_cliente": tipo_cliente,
-            "qntd_entradas": "a verificar",
-            "operador": "Sem Operador",
+            "qntd_entradas": qntd_entradas,
+            "operador": operador,
             "status": "Ativo",
             "boleto": "",
             "fundo_de_caixa": 0
         }
 
-    criar_cliente(dados)
-    st.success("Cliente cadastrado com sucesso!")
+        criar_cliente(dados)
+        st.success("Cliente cadastrado com sucesso!")
 
