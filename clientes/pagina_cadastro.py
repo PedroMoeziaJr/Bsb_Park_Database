@@ -54,11 +54,17 @@ def pagina_cadastro():
         dados = {
             "cod_cliente": cod_cliente,
             "nome_cliente": nome_cliente,
-            "id_filial": filial_escolhida
+            "id_filial": filial_escolhida,
+            "forma_de_pagamento": forma_pagamento,
+            "tipo_de_cliente": tipo_cliente,
+            "qntd_entradas": "a verificar",
+            "operador": "Sem Operador",
+            "status": "Ativo",
+            "boleto": "",
+            "fundo_de_caixa": 0
         }
 
-    st.write("DEBUG:", dados)
+        st.write("DEBUG:", dados)
 
     criar_cliente(dados)
     st.success("Cliente cadastrado com sucesso!")
-
