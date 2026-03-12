@@ -24,7 +24,7 @@ def pagina_consulta():
     nome_busca = st.text_input("Digite parte do nome do cliente")
 
     # ============================
-    # BUSCA POR NOME
+    # BUSCA POR NOME OU FILIAL
     # ============================
     if nome_busca.strip() != "":
         clientes = buscar_cliente_por_nome(nome_busca).data
@@ -36,19 +36,24 @@ def pagina_consulta():
         return
 
     st.subheader("Resultados")
-    
+
     # ============================
-    # LISTA COM BOTÃO DE EDITAR
+    # TABELA COM BOTÃO EDITAR
     # ============================
     for cliente in clientes:
-        with st.expander(f"{cliente['cod_cliente']} - {cliente['nome_cliente']}"):
-            st.write("Filial:", cliente["id_filial"])
-            st.write("Forma de pagamento:", cliente["forma_de_pagamento"])
-            st.write("Tipo de cliente:", cliente["tipo_de_cliente"])
-            st.write("Operador:", cliente["operador"])
-            st.write("Status:", cliente["status"])
+        col1, col2, col3, col4 = st.columns([2, 4, 2, 2])
 
-            if st.button(f"Editar {cliente['cod_cliente']}"):
+        with col1:
+            st.write(cliente["cod_cliente"])
+
+        with col2:
+            st.write(cliente["nome_cliente"])
+
+        with col3:
+            st.write(cliente["forma_de_pagamento"])
+
+        with col4:
+            if st.button("Editar", key=f"edit_{cliente['cod_cliente']}"):
                 st.session_state["cliente_editando"] = cliente
 
     # ============================
@@ -60,19 +65,22 @@ def pagina_consulta():
         st.subheader(f"Editando cliente: {cliente['cod_cliente']}")
 
         novo_nome = st.text_input("Nome", cliente["nome_cliente"])
+
         nova_forma = st.selectbox(
             "Forma de pagamento",
             ["Dinheiro", "Boleto", "Pix", "Transferência", "Cartão"],
             index=["Dinheiro", "Boleto", "Pix", "Transferência", "Cartão"].index(cliente["forma_de_pagamento"])
         )
+
         novo_tipo = st.selectbox(
             "Tipo de cliente",
             ["Mensalista", "Tickets_Convenio", "Rotativo"],
             index=["Mensalista", "Tickets_Convenio", "Rotativo"].index(cliente["tipo_de_cliente"])
         )
+
         novo_status = st.selectbox(
             "Status",
-            ["Ativo", "Inativo"],
+            ["Ativo", "Desativado"],
             index=0 if cliente["status"] == "Ativo" else 1
         )
 
@@ -86,5 +94,7 @@ def pagina_consulta():
 
             atualizar_cliente(cliente["cod_cliente"], dados_atualizados)
             st.success("Cliente atualizado com sucesso!")
+
+            # limpa o estado e atualiza a tela
             del st.session_state["cliente_editando"]
-            st.experimental_rerun()
+            st.experimental_set_query_params(refresh="1")
