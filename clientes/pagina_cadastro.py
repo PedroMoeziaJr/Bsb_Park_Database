@@ -64,7 +64,6 @@ def pagina_cadastro():
             "fundo_de_caixa": 0
         }
 
-        st.write("DEBUG:", dados)
-
     criar_cliente(dados)
     st.success("Cliente cadastrado com sucesso!")
+
