@@ -59,9 +59,9 @@ def pagina_cadastro():
             "tipo_de_cliente": tipo_cliente,
             "qntd_entradas": qntd_entradas,
             "operador": operador,
-            "status": "Ativo",          # opcional, mas recomendado
-            "boleto": "",               # vazio por padrão
-            "fundo_de_caixa": 0         # valor padrão
+            "status": "Ativo",
+            "boleto": "",
+            "fundo_de_caixa": 0
         }
 
         criar_cliente(dados)
