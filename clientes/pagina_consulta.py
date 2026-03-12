@@ -1,17 +1,13 @@
 import streamlit as st
-from clientes.crud_clientes import listar_filiais, listar_clientes_por_filial
+from clientes.crud_clientes import listar_clientes_por_filial, listar_filiais, buscar_cliente_por_nome
 
 def pagina_consulta():
     st.title("Consulta e Edição de Clientes")
 
-    # Buscar filiais
+    # ============================
+    # LISTAR FILIAIS
+    # ============================
     filiais = listar_filiais().data
-
-    if not filiais:
-        st.warning("Nenhuma filial encontrada no banco de dados.")
-        return
-
-    # Criar selectbox usando a coluna id_filial
     lista_filiais = [f["id_filial"] for f in filiais]
 
     filial_escolhida = st.selectbox(
@@ -19,57 +15,31 @@ def pagina_consulta():
         lista_filiais
     )
 
-    # Buscar clientes da filial selecionada
+    st.subheader("Buscar cliente pelo nome")
+    nome_busca = st.text_input("Digite parte do nome do cliente")
+
+    # ============================
+    # BUSCA POR NOME
+    # ============================
+    if nome_busca.strip() != "":
+        resultado = buscar_cliente_por_nome(nome_busca).data
+
+        if resultado:
+            st.success(f"{len(resultado)} cliente(s) encontrado(s)")
+            st.table(resultado)
+        else:
+            st.warning("Nenhum cliente encontrado com esse nome.")
+        return  # Evita mostrar a lista completa abaixo
+
+    # ============================
+    # LISTAR CLIENTES DA FILIAL
+    # ============================
+    st.subheader(f"Clientes da filial {filial_escolhida}")
+
     clientes = listar_clientes_por_filial(filial_escolhida).data
 
-    if not clientes:
-        st.info("Nenhum cliente encontrado para esta filial.")
-        return
-
-    st.dataframe(clientes)
-
-    st.subheader("Buscar Cliente")
-    cod = st.text_input("Código do Cliente para buscar")
-
-    if st.button("Buscar"):
-        cliente = buscar_cliente(cod).data
-        if cliente:
-            st.write("Cliente encontrado:")
-            st.json(cliente)
-
-            st.subheader("Editar Cliente")
-
-            nome = st.text_input("Nome", cliente["nome_cliente"])
-            id_filial = st.text_input("ID Filial", cliente["id_filial"])
-            qntd = st.text_input("Qtd Entradas", cliente["qntd_entradas"])
-            fundo = st.number_input("Fundo de Caixa", value=float(cliente["fundo_de_caixa"]))
-            operador = st.text_input("Operador", cliente["operador"])
-            forma = st.text_input("Forma de Pagamento", cliente["forma_de_pagamento"])
-            boleto = st.text_input("Boleto", cliente["boleto"])
-            tipo = st.text_input("Tipo de Cliente", cliente["tipo_de_cliente"])
-            status = st.text_input("Status", cliente["status"])
-
-            if st.button("Salvar Alterações"):
-                atualizar_cliente(
-                    cod,
-                    {
-                        "nome_cliente": nome,
-                        "id_filial": id_filial,
-                        "qntd_entradas": qntd,
-                        "fundo_de_caixa": fundo,
-                        "operador": operador,
-                        "forma_de_pagamento": forma,
-                        "boleto": boleto,
-                        "tipo_de_cliente": tipo,
-                        "status": status,
-                    },
-                )
-                st.success("Cliente atualizado!")
-
-            if st.button("Excluir Cliente"):
-                deletar_cliente(cod)
-                st.error("Cliente excluído!")
-        else:
-
-            st.warning("Cliente não encontrado.")
+    if clientes:
+        st.table(clientes)
+    else:
+        st.info("Nenhum cliente cadastrado nessa filial.")
 
