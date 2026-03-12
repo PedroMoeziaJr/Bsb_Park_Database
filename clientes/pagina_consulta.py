@@ -3,15 +3,20 @@ from clientes.crud_clientes import (
     listar_clientes_por_filial,
     listar_filiais,
     buscar_cliente_por_nome,
-    atualizar_cliente
+    atualizar_cliente,
+    deletar_cliente,
 )
 
+
 def pagina_consulta():
+    # Refresh simples
+    if st.session_state.get("refresh"):
+        st.session_state["refresh"] = False
+        st.rerun()
+
     st.title("Consulta e Edição de Clientes")
 
-    # ============================
-    # LISTAR FILIAIS
-    # ============================
+    # Filiais
     filiais = listar_filiais().data
     lista_filiais = [f["id_filial"] for f in filiais]
 
@@ -23,10 +28,8 @@ def pagina_consulta():
     st.subheader("Buscar cliente pelo nome")
     nome_busca = st.text_input("Digite parte do nome do cliente")
 
-    # ============================
-    # BUSCA POR NOME OU FILIAL
-    # ============================
-    if nome_busca.strip() != "":
+    # Busca
+    if nome_busca.strip():
         clientes = buscar_cliente_por_nome(nome_busca).data
     else:
         clientes = listar_clientes_por_filial(filial_escolhida).data
@@ -37,28 +40,29 @@ def pagina_consulta():
 
     st.subheader("Resultados")
 
-    # ============================
-    # TABELA COM BOTÃO EDITAR
-    # ============================
+    # Tabela completa
+    st.dataframe(clientes, use_container_width=True)
+
+    st.write("### Ações")
+
+    # Lista com botões
     for cliente in clientes:
-        col1, col2, col3, col4 = st.columns([2, 4, 2, 2])
+        col1, col2, col3 = st.columns([4, 1, 1])
 
         with col1:
-            st.write(cliente["cod_cliente"])
+            st.write(f"{cliente['cod_cliente']} - {cliente['nome_cliente']}")
 
         with col2:
-            st.write(cliente["nome_cliente"])
-
-        with col3:
-            st.write(cliente["forma_de_pagamento"])
-
-        with col4:
             if st.button("Editar", key=f"edit_{cliente['cod_cliente']}"):
                 st.session_state["cliente_editando"] = cliente
 
-    # ============================
-    # FORMULÁRIO DE EDIÇÃO
-    # ============================
+        with col3:
+            if st.button("Excluir", key=f"del_{cliente['cod_cliente']}"):
+                deletar_cliente(cliente["cod_cliente"])
+                st.success("Cliente excluído com sucesso!")
+                st.session_state["refresh"] = True
+
+    # Formulário de edição
     if "cliente_editando" in st.session_state:
         cliente = st.session_state["cliente_editando"]
 
@@ -66,22 +70,28 @@ def pagina_consulta():
 
         novo_nome = st.text_input("Nome", cliente["nome_cliente"])
 
+        formas_pagamento = ["Dinheiro", "Boleto", "Pix", "Transferência", "Cartão"]
         nova_forma = st.selectbox(
             "Forma de pagamento",
-            ["Dinheiro", "Boleto", "Pix", "Transferência", "Cartão"],
-            index=["Dinheiro", "Boleto", "Pix", "Transferência", "Cartão"].index(cliente["forma_de_pagamento"])
+            formas_pagamento,
+            index=formas_pagamento.index(cliente["forma_de_pagamento"])
+            if cliente["forma_de_pagamento"] in formas_pagamento else 0
         )
 
+        tipos_cliente = ["Mensalista", "Tickets_Convenio", "Rotativo"]
         novo_tipo = st.selectbox(
             "Tipo de cliente",
-            ["Mensalista", "Tickets_Convenio", "Rotativo"],
-            index=["Mensalista", "Tickets_Convenio", "Rotativo"].index(cliente["tipo_de_cliente"])
+            tipos_cliente,
+            index=tipos_cliente.index(cliente["tipo_de_cliente"])
+            if cliente["tipo_de_cliente"] in tipos_cliente else 0
         )
 
+        status_opcoes = ["Ativo", "Desativado"]
         novo_status = st.selectbox(
             "Status",
-            ["Ativo", "Desativado"],
-            index=0 if cliente["status"] == "Ativo" else 1
+            status_opcoes,
+            index=status_opcoes.index(cliente["status"])
+            if cliente["status"] in status_opcoes else 0
         )
 
         if st.button("Salvar alterações"):
@@ -95,6 +105,5 @@ def pagina_consulta():
             atualizar_cliente(cliente["cod_cliente"], dados_atualizados)
             st.success("Cliente atualizado com sucesso!")
 
-            # limpa o estado e atualiza a tela
             del st.session_state["cliente_editando"]
-            st.experimental_set_query_params(refresh="1")
+            st.session_state["refresh"] = True
